@@ -2,12 +2,11 @@ import os
 import json
 import numpy as np
 import xml.etree.ElementTree as ET
-from utils.Code_dictionary import CodeDictionary
-
-
+from tools_hu.utils.Code_dictionary import CodeDictionary
 
 START_IMAGE_ID = 1
 START_BOUNDING_BOX_ID = 1
+
 
 class MyEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -20,6 +19,7 @@ class MyEncoder(json.JSONEncoder):
         else:
             return super(MyEncoder, self).default(obj)
 
+
 def get_and_check(root, name, length):
     vars = root.findall(name)
     if len(vars) == 0:
@@ -30,9 +30,11 @@ def get_and_check(root, name, length):
         vars = vars[0]
     return vars
 
+
 def get(root, name):
     vars = root.findall(name)
     return vars
+
 
 def convert(name_list, xml_dir, save_json, code_dictionary):
     json_dict = {"images": [], "type": "instances", "annotations": [], "categories": []}
@@ -88,15 +90,16 @@ def convert(name_list, xml_dir, save_json, code_dictionary):
 
 
 if __name__ == '__main__':
-    file_dir = r'D:\Project\WHTM\data\21101\train_test\train'
+    file_dir = r'D:\Project\chongqing_contest\data\chongqing1_round1_train1_20191223\train_test_dataset\bottom\train'
     name_lst = []
     for root, _, files in os.walk(file_dir):
         for file in files:
             if file.endswith('jpg') or file.endswith('JPG'):
                 name_lst.append(file[:-4])
 
-    json_file = r'D:\Project\WHTM\data\21101\train_test\train.json'
-    code_file = r'D:\Project\WHTM\document\21101\classes.txt'
-    code = CodeDictionary(code_file)
+    json_file = r'D:\Project\chongqing_contest\data\chongqing1_round1_train1_20191223\train_test_dataset\bottom\train.json'
+    code_file = r'D:\Project\chongqing_contest\data\chongqing1_round1_train1_20191223\train_test_dataset\bottom\classes.txt'
+    id_file = r'D:\Project\chongqing_contest\data\chongqing1_round1_train1_20191223\train_test_dataset\bottom\id.txt'
+    code = CodeDictionary(code_file, id_file)
 
     convert(name_lst, file_dir, json_file, code)
