@@ -13,7 +13,7 @@ This can be used after voc2coco, especially when we wanna analyze the coco json 
 
 import os
 import json
-from utils import file_name_ext
+from tools_2.utils import file_name_ext
 
 
 class CategoryDist(object):

@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import os, json, shutil
-from pascal_voc_io import PascalVocWriter
+from tools_dyy.preprocess.pascal_voc_io import PascalVocWriter
 
 
 if __name__ == '__main__':
 
-    root = r'C:\Users\EDZ\Desktop\chongqing1_round1_train1_20191223'
+    root = r'D:\Project\chongqing_contest\data\chongqing1_round1_train1_20191223'
     img_dir = os.path.join(root, 'images')
     json_file = os.path.join(root, 'annotations.json')
 
