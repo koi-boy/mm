@@ -7,7 +7,7 @@ from Evaluator import *
 import matplotlib.pyplot as plt
 
 
-def get_bbox(json_file, is_gt):
+def get_bbox(json_file, is_gt, score_thr=0.01):
     with open(json_file, 'r') as f:
         data = json.load(f)
     images = data['images']
@@ -34,16 +34,17 @@ def get_bbox(json_file, is_gt):
             bbox_lst.append([img_name, category_id, 1, bbox])
         else:
             score = anno['score']
-            bbox_lst.append([img_name, category_id, score, bbox])
+            if score > score_thr:
+                bbox_lst.append([img_name, category_id, score, bbox])
     return bbox_lst
 
 
 if __name__ == '__main__':
     root = r'C:\Users\EDZ\Desktop\chongqing1_round1_train1_20191223'
-    gt_json = os.path.join(root, r'train_test\test.json')
-    det_json = os.path.join(root, r'model_predict\result_keep15.json')
+    gt_json = os.path.join(root, r'train_val\val.json')
+    det_json = os.path.join(root, r'model_predict\result_concat.json')
     gt_lst = get_bbox(gt_json, is_gt=True)
-    det_lst = get_bbox(det_json, is_gt=False)
+    det_lst = get_bbox(det_json, is_gt=False, score_thr=0.01)
 
     evaluator = Evaluator()
     ret, mAP = evaluator.GetPascalVOCMetrics(
@@ -68,7 +69,7 @@ if __name__ == '__main__':
 
     save_dir = os.path.join(root, r'model_predict\plot')
     if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
+        os.mkdir(save_dir)
     evaluator.PlotPrecisionRecallCurve(
         gt_lst,
         det_lst,
