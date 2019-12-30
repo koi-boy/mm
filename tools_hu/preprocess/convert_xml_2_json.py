@@ -90,16 +90,16 @@ def convert(name_list, xml_dir, save_json, code_dictionary):
 
 
 if __name__ == '__main__':
-    file_dir = r'D:\Project\chongqing_contest\data\chongqing1_round1_train1_20191223\train_test_dataset\bottom\train'
+    file_dir = r'D:\Project\chongqing_contest\data\chongqing1_round1_train1_20191223\bottom\images'
     name_lst = []
     for root, _, files in os.walk(file_dir):
         for file in files:
             if file.endswith('jpg') or file.endswith('JPG'):
                 name_lst.append(file[:-4])
 
-    json_file = r'D:\Project\chongqing_contest\data\chongqing1_round1_train1_20191223\train_test_dataset\bottom\train.json'
-    code_file = r'D:\Project\chongqing_contest\data\chongqing1_round1_train1_20191223\train_test_dataset\bottom\classes.txt'
-    id_file = r'D:\Project\chongqing_contest\data\chongqing1_round1_train1_20191223\train_test_dataset\bottom\id.txt'
+    json_file = r'D:\Project\chongqing_contest\data\chongqing1_round1_train1_20191223\bottom\all.json'
+    code_file = r'D:\Project\chongqing_contest\data\chongqing1_round1_train1_20191223\bottom\classes.txt'
+    id_file = r'D:\Project\chongqing_contest\data\chongqing1_round1_train1_20191223\bottom\id.txt'
     code = CodeDictionary(code_file, id_file)
 
     convert(name_lst, file_dir, json_file, code)
