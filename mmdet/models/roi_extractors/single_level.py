@@ -11,10 +11,8 @@ from ..registry import ROI_EXTRACTORS
 @ROI_EXTRACTORS.register_module
 class SingleRoIExtractor(nn.Module):
     """Extract RoI features from a single level feature map.
-
     If there are mulitple input feature levels, each RoI is mapped to a level
     according to its scale.
-
     Args:
         roi_layer (dict): Specify RoI layer type and arguments.
         out_channels (int): Output channels of RoI layers.
@@ -26,13 +24,16 @@ class SingleRoIExtractor(nn.Module):
                  roi_layer,
                  out_channels,
                  featmap_strides,
-                 finest_scale=56):
+                 finest_scale=56,
+                 add_context=False):
         super(SingleRoIExtractor, self).__init__()
         self.roi_layers = self.build_roi_layers(roi_layer, featmap_strides)
         self.out_channels = out_channels
         self.featmap_strides = featmap_strides
         self.finest_scale = finest_scale
         self.fp16_enabled = False
+        self.add_context = add_context
+        self.pool = torch.nn.AdaptiveAvgPool2d(7)
 
     @property
     def num_inputs(self):
@@ -53,16 +54,13 @@ class SingleRoIExtractor(nn.Module):
 
     def map_roi_levels(self, rois, num_levels):
         """Map rois to corresponding feature levels by scales.
-
         - scale < finest_scale * 2: level 0
         - finest_scale * 2 <= scale < finest_scale * 4: level 1
         - finest_scale * 4 <= scale < finest_scale * 8: level 2
         - scale >= finest_scale * 8: level 3
-
         Args:
             rois (Tensor): Input RoIs, shape (k, 5).
             num_levels (int): Total level number.
-
         Returns:
             Tensor: Level index (0-based) of each RoI, shape (k, )
         """
@@ -90,9 +88,14 @@ class SingleRoIExtractor(nn.Module):
     def forward(self, feats, rois, roi_scale_factor=None):
         if len(feats) == 1:
             return self.roi_layers[0](feats[0], rois)
+        if self.add_context:
+            context = []
+            for feat in feats:
+                context.append(self.pool(feat))
 
         out_size = self.roi_layers[0].out_size
         num_levels = len(feats)
+        batch_size = feats[0].shape[0]
         target_lvls = self.map_roi_levels(rois, num_levels)
         roi_feats = feats[0].new_zeros(
             rois.size(0), self.out_channels, *out_size)
@@ -103,5 +106,8 @@ class SingleRoIExtractor(nn.Module):
             if inds.any():
                 rois_ = rois[inds, :]
                 roi_feats_t = self.roi_layers[i](feats[i], rois_)
+                if self.add_context:
+                    for j in range(batch_size):
+                        roi_feats_t[rois_[:, 0] == j] += context[i][j]
                 roi_feats[inds] = roi_feats_t
         return roi_feats

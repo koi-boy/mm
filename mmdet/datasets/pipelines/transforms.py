@@ -1,3 +1,8 @@
+import cv2
+import PIL
+from PIL import Image, ImageEnhance, ImageFilter
+from skimage.util import random_noise
+
 import mmcv
 import numpy as np
 from imagecorruptions import corrupt
@@ -213,6 +218,488 @@ class RandomFlip(object):
     def __repr__(self):
         return self.__class__.__name__ + '(flip_ratio={})'.format(
             self.flip_ratio)
+            
+            
+@PIPELINES.register_module
+class RandomVerticalFlip(object):
+    """Vertical Flip the image & bbox.
+
+    If the input dict contains the key "flip", then the flag will be used,
+    otherwise it will be randomly decided by a ratio specified in the init
+    method.
+
+    Args:
+        flip_ratio (float, optional): The flipping probability.
+    """
+
+    def __init__(self, flip_ratio=None):
+        self.flip_ratio = flip_ratio
+        if flip_ratio is not None:
+            assert flip_ratio >= 0 and flip_ratio <= 1
+
+    def bbox_flip(self, bboxes, img_shape):
+        """Flip bboxes vertically.
+
+        Args:
+            bboxes(ndarray): shape (..., 4*k)
+            img_shape(tuple): (height, width)
+        """
+        assert bboxes.shape[-1] % 4 == 0
+        h = img_shape[0]
+        flipped = bboxes.copy()
+        flipped[..., 1::4] = h - bboxes[..., 3::4] - 1
+        flipped[..., 3::4] = h - bboxes[..., 1::4] - 1
+        return flipped
+
+    def __call__(self, results):
+        if 'flip' not in results:
+            flip = True if np.random.rand() < self.flip_ratio else False
+            results['flip'] = flip
+        if results['flip']:
+            # flip image
+            results['img'] = mmcv.imflip(results['img'], direction='vertical')
+            # flip bboxes
+            for key in results.get('bbox_fields', []):
+                results[key] = self.bbox_flip(results[key],
+                                              results['img_shape'])
+        return results
+
+    def __repr__(self):
+        return self.__class__.__name__ + '(flip_ratio={})'.format(
+            self.flip_ratio)
+
+
+@PIPELINES.register_module
+class BBoxJitter(object):
+    """
+    bbox jitter
+    Args:
+        min (int, optional): min scale
+        max (int, optional): max scale
+        ## origin w scale
+    """
+
+    def __init__(self, min=0, max=2):
+        self.min_scale = min
+        self.max_scale = max
+        self.count = 0
+
+    def bbox_jitter(self, bboxes, img_shape):
+        """
+        Args:
+            bboxes(ndarray): shape (..., 4*k)
+            img_shape(tuple): (height, width)
+        """
+        assert bboxes.shape[-1] % 4 == 0
+        if len(bboxes) == 0:
+            return bboxes
+        jitter_bboxes = []
+        for box in bboxes:
+            w = box[2] - box[0]
+            h = box[3] - box[1]
+            center_x = (box[0] + box[2]) / 2
+            center_y = (box[1] + box[3]) / 2
+            scale = np.random.uniform(self.min_scale, self.max_scale)
+            w = w * scale / 2.
+            h = h * scale / 2.
+            xmin = center_x - w
+            ymin = center_y - h
+            xmax = center_x + w
+            ymax = center_y + h
+            box2 = np.array([xmin, ymin, xmax, ymax], dtype=np.float32)
+            jitter_bboxes.append(box2)
+        jitter_bboxes = np.array(jitter_bboxes, dtype=np.float32)
+        jitter_bboxes[:, 0::2] = np.clip(jitter_bboxes[:, 0::2], 0, img_shape[1] - 1)
+        jitter_bboxes[:, 1::2] = np.clip(jitter_bboxes[:, 1::2], 0, img_shape[0] - 1)
+        return jitter_bboxes
+
+    def __call__(self, results):
+        for key in results.get('bbox_fields', []):
+            results[key] = self.bbox_jitter(results[key],
+                                          results['img_shape'])
+        return results
+
+    def __repr__(self):
+        return self.__class__.__name__ + '(bbox_jitter={}-{})'.format(
+            self.min_scale, self.max_scale)
+            
+            
+@PIPELINES.register_module
+class RandomRotate(object):
+    """Rotate the image & bbox.
+
+    If the input dict contains the key "rotate", then the flag will be used,
+    otherwise it will be randomly decided by a ratio specified in the init
+    method.
+
+    Args:
+        rotate_ratio (float, optional): The rotating probability.
+    """
+
+    def __init__(self, angle=180, rotate_ratio=None):
+        assert angle == 180, 'Only 180 degrees supported now.'
+        self.angle = angle
+        self.rotate_ratio = rotate_ratio
+        if rotate_ratio is not None:
+            assert rotate_ratio >= 0 and rotate_ratio <= 1
+    
+    def get_corners(self, bboxes):
+      """Get corners of bounding boxes.
+      
+      Args:
+          bboxes(ndarray): (..., 4*k)
+      
+      Returns:
+          Four corners(ndarray): (..., 8*k)
+      """
+      assert bboxes.shape[-1] % 4 == 0
+      width = (bboxes[:, 2] - bboxes[:, 0]).reshape(-1, 1)
+      height = (bboxes[:, 3] - bboxes[:, 1]).reshape(-1, 1)
+      x1 = bboxes[:, 0].reshape(-1, 1)
+      y1 = bboxes[:,1].reshape(-1, 1)
+      x2 = x1 + width
+      y2 = y1 
+      x3 = x1
+      y3 = y1 + height
+      x4 = bboxes[:, 2].reshape(-1, 1)
+      y4 = bboxes[:, 3].reshape(-1, 1)
+      corners = np.hstack((x1, y1, x2, y2, x3, y3, x4, y4))
+      return corners
+      
+    def bbox_rotate(self, corners, img_shape):
+        """Rotate bboxes.
+
+        Args:
+            corners(ndarray): (..., 8*k)
+            img_shape(tuple): (height, width)
+        
+        Returns:
+            Four corners of rotated bounding boxes.
+        """
+        corners = corners.reshape(-1, 2)
+        corners = np.hstack((corners, np.ones((corners.shape[0], 1))))
+        h, w = img_shape[0:2]
+        cx, cy = (w - 1) * 0.5, (h - 1) * 0.5
+        M = cv2.getRotationMatrix2D((cx, cy), -self.angle, 1.0)
+        cos = np.abs(M[0, 0])
+        sin = np.abs(M[0, 1])
+        nW = h * sin + w * cos
+        nH = h * cos + w * sin
+        # adjust the rotation matrix to take into account translation
+        M[0, 2] += (nW - w) * 0.5
+        M[1, 2] += (nH - h) * 0.5
+        # Prepare the vector to be transformed
+        calculated = np.dot(M, corners.T).T
+        calculated = calculated.reshape(-1, 8)
+        return calculated
+
+    def bbox_clip(self, bboxes, clip_box, alpha=0.25):
+        """Clip the bounding boxes to the borders of an image.
+
+        Args:
+            bboxes(ndarray): (..., 4*k)
+            clip_box(ndarray):
+                An array of shape (4,) specifying the diagonal co-ordinates of the image.
+            alpha(float):
+                If the fraction of a bounding box left in the image after being clipped is 
+                less than `alpha` the bounding box is dropped.
+        
+        Returns:
+            Bboxes left after being clipped.
+        """
+        def bbox_area(bboxes):
+            return (bboxes[:, 2] - bboxes[:, 0]) * (bboxes[:, 3] - bboxes[:, 1])
+        area = bbox_area(bboxes)
+        xmin = np.maximum(bboxes[:, 0], clip_box[0]).reshape(-1, 1)
+        ymin = np.maximum(bboxes[:, 1], clip_box[1]).reshape(-1, 1)
+        xmax = np.minimum(bboxes[:, 2], clip_box[2]).reshape(-1, 1)
+        ymax = np.minimum(bboxes[:, 3], clip_box[3]).reshape(-1, 1)
+        bboxes = np.hstack((xmin, ymin, xmax, ymax, bboxes[:, 4:]))
+        delta_area = (area - bbox_area(bboxes)) / area
+        mask = (delta_area < (1 - alpha)).astype(int)
+        bboxes = bboxes[mask == 1, :]
+        return bboxes
+        
+    def get_enclosing_box(self, corners):
+        """Get an enclosing box for ratated corners of a bounding box.
+        
+        Args:
+            corners(ndarray): (..., 8*k)
+
+        Returns 
+            bboxes(ndarray): (..., 4*k)
+        """
+        x_ = corners[:, [0,2,4,6]]
+        y_ = corners[:, [1,3,5,7]]
+        xmin = np.min(x_, 1).reshape(-1, 1)
+        ymin = np.min(y_, 1).reshape(-1, 1)
+        xmax = np.max(x_, 1).reshape(-1, 1)
+        ymax = np.max(y_, 1).reshape(-1, 1)  
+        bboxes = np.hstack((xmin, ymin, xmax, ymax, corners[:, 8:]))
+        return bboxes
+
+    def __call__(self, results):
+        if 'rotate' not in results:
+            rotate = True if np.random.rand() < self.rotate_ratio else False
+            results['rotate'] = rotate
+        if results['rotate']:
+            # rotate image
+            image = results['img']
+            h, w = image.shape[:2]
+            rotated_image = mmcv.imrotate(image, angle=self.angle)
+            results['img'] = rotated_image
+            # rotate bboxes
+            for key in results.get('bbox_fields', []):
+                bboxes = results[key]
+                corners = self.get_corners(bboxes)
+                corners = np.hstack((corners, bboxes[:, 4:]))
+                corners[:, :8] = self.bbox_rotate(corners[:, :8],
+                                                  results['img_shape'])
+                new_bboxes = self.get_enclosing_box(corners)
+                # new_bboxes = self.bbox_clip(new_bboxes, [0, 0, w, h])
+                results[key] = new_bboxes
+        return results
+
+    def __repr__(self):
+        return self.__class__.__name__ + '(angle={}, rotate_ratio={})'.format(
+            self.angle, self.rotate_ratio)
+
+
+@PIPELINES.register_module
+class RandomColor(object):
+    """Adjust image color balance.
+
+    If the input dict contains the key "color", then the flag will be used,
+    otherwise it will be randomly decided by a ratio specified in the init
+    method.
+
+    Args:
+        color_ratio (float, optional): The adjusting probability.
+    """
+
+    def __init__(self, color_range=(0.5, 1.5), color_ratio=None):
+        self.color_lower, self.color_upper = color_range
+        self.color_ratio = color_ratio
+        if color_ratio is not None:
+            assert color_ratio >= 0 and color_ratio <= 1
+
+    def color(self, img):
+        """Adjust image color.
+
+        Args:
+            image(ndarray): opencv type(bgr)
+        """
+        factor = random.uniform(self.color_lower, self.color_upper)
+        image = Image.fromarray(img)
+        enh_color = ImageEnhance.Color(image)
+        image_enhanced = enh_color.enhance(factor)
+        image_enhanced = np.asarray(image_enhanced)
+        return image_enhanced
+        
+    def __call__(self, results):
+        if 'color' not in results:
+            color = True if np.random.rand() < self.color_ratio else False
+            results['color'] = color
+        if results['color']:
+            # adjust image color
+            results['img'] = self.color(results['img'])
+        return results
+
+    def __repr__(self):
+        return self.__class__.__name__ + '(color_range={}, color_ratio={})'.format(
+            self.color_range, self.color_ratio)
+
+
+@PIPELINES.register_module
+class RandomContrast(object):
+    """Adjust contrast of image.
+
+    If the input dict contains the key "contrast", then the flag will be used,
+    otherwise it will be randomly decided by a ratio specified in the init
+    method.
+
+    Args:
+        contrast_ratio (float, optional): The adjusting probability.
+    """
+
+    def __init__(self, contrast_range=(0.5, 1.5), contrast_ratio=None):
+        self.contrast_lower, self.contrast_upper = contrast_range
+        self.contrast_ratio = contrast_ratio
+        if contrast_ratio is not None:
+            assert contrast_ratio >= 0 and contrast_ratio <= 1
+
+    def contrast(self, img):
+        """Adjust image contrast.
+
+        Args:
+            image(ndarray): opencv type(bgr)
+        """
+        factor = random.uniform(self.contrast_lower, self.contrast_upper)
+        image = Image.fromarray(img)
+        enh_contrast = ImageEnhance.Contrast(image)
+        image_enhanced = enh_contrast.enhance(factor)
+        image_enhanced = np.asarray(image_enhanced)
+        return image_enhanced
+        
+    def __call__(self, results):
+        if 'contrast' not in results:
+            contrast = True if np.random.rand() < self.contrast_ratio else False
+            results['contrast'] = contrast
+        if results['contrast']:
+            # adjust image contrast
+            results['img'] = self.contrast(results['img'])
+        return results
+
+    def __repr__(self):
+        return self.__class__.__name__ + '(contrast_range={}, contrast_ratio={})'.format(
+            self.contrast_range, self.contrast_ratio)
+
+
+@PIPELINES.register_module
+class RandomBrightness(object):
+    """Adjust brightness of image.
+
+    If the input dict contains the key "brightness", then the flag will be used,
+    otherwise it will be randomly decided by a ratio specified in the init
+    method.
+
+    Args:
+        brightness_ratio (float, optional): The adjusting probability.
+    """
+
+    def __init__(self, brightness_range=(0.5, 1.5), brightness_ratio=None):
+        self.brightness_lower, self.brightness_upper = brightness_range
+        self.brightness_ratio = brightness_ratio
+        if brightness_ratio is not None:
+            assert brightness_ratio >= 0 and brightness_ratio <= 1
+
+    def brightness(self, img):
+        """Adjust image brightness.
+
+        Args:
+            image(ndarray): opencv type(bgr)
+        """
+        factor = random.uniform(self.brightness_lower, self.brightness_upper)
+        image = Image.fromarray(img)
+        enh_brightness = ImageEnhance.Brightness(image)
+        image_enhanced = enh_brightness.enhance(factor)
+        image_enhanced = np.asarray(image_enhanced)
+        return image_enhanced
+        
+    def __call__(self, results):
+        if 'brightness' not in results:
+            brightness = True if np.random.rand() < self.brightness_ratio else False
+            results['brightness'] = brightness
+        if results['brightness']:
+            # adjust image brightness
+            results['img'] = self.brightness(results['img'])
+        return results
+
+    def __repr__(self):
+        return self.__class__.__name__ + '(brightness_range={}, brightness_ratio={})'.format(
+            self.brightness_range, self.brightness_ratio)
+
+
+@PIPELINES.register_module
+class RandomNoise(object):
+    """Add noise to image.
+
+    If the input dict contains the key "noise", then the flag will be used,
+    otherwise it will be randomly decided by a ratio specified in the init
+    method.
+
+    Args:
+        noise_ratio (float, optional): The adjusting probability.
+    """
+
+    def __init__(self, noise_type="gaussian", noise_ratio=None):
+        """
+        noise_type = ["gaussian", "localvar", "poisson", "salt", "pepper", "s&p", "speckle"]
+        """
+        self.noise_type = noise_type
+        self.noise_ratio = noise_ratio
+        if noise_ratio is not None:
+            assert noise_ratio >= 0 and noise_ratio <= 1
+
+    def add_noise(self, img):
+        """Add noise to image.
+
+        Args:
+            image(ndarray): opencv type(bgr)
+        """
+        noised_image = (random_noise(img, mode=self.noise_type)*255).astype(np.uint8) 
+        return noised_image
+        
+    def __call__(self, results):
+        if 'noise' not in results:
+            noise = True if np.random.rand() < self.noise_ratio else False
+            results['noise'] = noise
+        if results['noise']:
+            # add noise to image
+            results['img'] = self.add_noise(results['img'])
+        return results
+
+    def __repr__(self):
+        return self.__class__.__name__ + '(noise_type={}, noise_ratio={})'.format(
+            self.noise_type, self.noise_ratio)
+
+
+@PIPELINES.register_module
+class RandomFilter(object):
+    """Image Filtering.
+
+    If the input dict contains the key "blur", then the flag will be used,
+    otherwise it will be randomly decided by a ratio specified in the init
+    method.
+
+    Args:
+        blur_ratio (float, optional): The adjusting probability.
+    """
+
+    def __init__(self, blur_type="gaussian", blur_ratio=None):
+        """
+        filter_type = ["original", "gaussian", "detail", "edge_enhance", "sharpen"]
+        """
+        self.blur_type = blur_type
+        self.blur_ratio = blur_ratio
+        if blur_ratio is not None:
+            assert blur_ratio >= 0 and blur_ratio <= 1
+
+    def filtering(self, img):
+        """Image Filtering.
+
+        Args:
+            image(ndarray): opencv type(bgr)
+        """
+        image = Image.fromarray(img)
+        if self.blur_type == "original":
+            blured_image = image.filter(ImageFilter.BLUR)
+        elif self.blur_type == "gaussian":
+            radius = random.uniform(0, 3)
+            blured_image = image.filter(ImageFilter.GaussianBlur(radius=radius))
+        elif self.blur_type == "detail":
+            blured_image = image.filter(ImageFilter.DETAIL)
+        elif self.blur_type == "edge_enhance":
+            blured_image = image.filter(ImageFilter.EDGE_ENHANCE)
+        elif self.blur_type == "sharpen":
+            blured_image = image.filter(ImageFilter.SHARPEN)
+        else:
+            print("ERROR! Blur type not support, please check it later!")
+        blured_image = np.asarray(blured_image)
+        return blured_image
+        
+    def __call__(self, results):
+        if 'blur' not in results:
+            blur = True if np.random.rand() < self.blur_ratio else False
+            results['blur'] = blur
+        if results['blur']:
+            # image filtering
+            results['img'] = self.filtering(results['img'])
+        return results
+
+    def __repr__(self):
+        return self.__class__.__name__ + '(blur_type={}, blur_ratio={})'.format(
+            self.blur_type, self.blur_ratio)
 
 
 @PIPELINES.register_module
@@ -300,7 +787,7 @@ class Normalize(object):
 
 @PIPELINES.register_module
 class RandomCrop(object):
-    """Random crop the image & bboxes.
+    """Random crop the image & bboxes & masks.
 
     Args:
         crop_size (tuple): Expected size after cropping, (h, w).
@@ -313,48 +800,54 @@ class RandomCrop(object):
         img = results['img']
         margin_h = max(img.shape[0] - self.crop_size[0], 0)
         margin_w = max(img.shape[1] - self.crop_size[1], 0)
-        offset_h = np.random.randint(0, margin_h + 1)
-        offset_w = np.random.randint(0, margin_w + 1)
-        crop_y1, crop_y2 = offset_h, offset_h + self.crop_size[0]
-        crop_x1, crop_x2 = offset_w, offset_w + self.crop_size[1]
-
-        # crop the image
-        img = img[crop_y1:crop_y2, crop_x1:crop_x2, :]
-        img_shape = img.shape
-        results['img'] = img
-        results['img_shape'] = img_shape
-
-        # crop bboxes accordingly and clip to the image boundary
-        for key in results.get('bbox_fields', []):
-            bbox_offset = np.array([offset_w, offset_h, offset_w, offset_h],
-                                   dtype=np.float32)
-            bboxes = results[key] - bbox_offset
-            bboxes[:, 0::2] = np.clip(bboxes[:, 0::2], 0, img_shape[1] - 1)
-            bboxes[:, 1::2] = np.clip(bboxes[:, 1::2], 0, img_shape[0] - 1)
-            results[key] = bboxes
-
-        # filter out the gt bboxes that are completely cropped
-        if 'gt_bboxes' in results:
-            gt_bboxes = results['gt_bboxes']
-            valid_inds = (gt_bboxes[:, 2] > gt_bboxes[:, 0]) & (
-                gt_bboxes[:, 3] > gt_bboxes[:, 1])
-            # if no gt bbox remains after cropping, just skip this image
-            if not np.any(valid_inds):
-                return None
-            results['gt_bboxes'] = gt_bboxes[valid_inds, :]
-            if 'gt_labels' in results:
-                results['gt_labels'] = results['gt_labels'][valid_inds]
-
-            # filter and crop the masks
-            if 'gt_masks' in results:
-                valid_gt_masks = []
-                for i in valid_inds:
-                    gt_mask = results['gt_masks'][i][crop_y1:crop_y2, crop_x1:
-                                                     crop_x2]
-                    valid_gt_masks.append(gt_mask)
-                results['gt_masks'] = valid_gt_masks
-
-        return results
+        for i in range(1000):
+            offset_h = np.random.randint(0, margin_h + 1)
+            offset_w = np.random.randint(0, margin_w + 1)
+            crop_y1, crop_y2 = offset_h, offset_h + self.crop_size[0]
+            crop_x1, crop_x2 = offset_w, offset_w + self.crop_size[1]
+    
+            # crop the image
+            img = img[crop_y1:crop_y2, crop_x1:crop_x2, :]
+            img_shape = img.shape
+            results['img'] = img
+            results['img_shape'] = img_shape
+    
+            # crop bboxes accordingly and clip to the image boundary
+            for key in results.get('bbox_fields', []):
+                bbox_offset = np.array([offset_w, offset_h, offset_w, offset_h],
+                                       dtype=np.float32)
+                bboxes = results[key] - bbox_offset
+                bboxes[:, 0::2] = np.clip(bboxes[:, 0::2], 0, img_shape[1] - 1)
+                bboxes[:, 1::2] = np.clip(bboxes[:, 1::2], 0, img_shape[0] - 1)
+                results[key] = bboxes
+    
+            # filter out the gt bboxes that are completely cropped
+            if 'gt_bboxes' in results:
+                gt_bboxes = results['gt_bboxes']
+                valid_inds = (gt_bboxes[:, 2] > gt_bboxes[:, 0]) & (
+                    gt_bboxes[:, 3] > gt_bboxes[:, 1])
+                """
+                # if no gt bbox remains after cropping, just skip this image
+                if not np.any(valid_inds):
+                    return None
+                """
+                # if no gt bbox remains after cropping, jump to next circle
+                if not np.any(valid_inds):
+                    continue
+                results['gt_bboxes'] = gt_bboxes[valid_inds, :]
+                if 'gt_labels' in results:
+                    results['gt_labels'] = results['gt_labels'][valid_inds]
+    
+                # filter and crop the masks
+                if 'gt_masks' in results:
+                    valid_gt_masks = []
+                    for i in np.where(valid_inds)[0]:
+                        gt_mask = results['gt_masks'][i][crop_y1:crop_y2, crop_x1:
+                                                         crop_x2]
+                        valid_gt_masks.append(gt_mask)
+                    results['gt_masks'] = valid_gt_masks
+    
+            return results
 
     def __repr__(self):
         return self.__class__.__name__ + '(crop_size={})'.format(
@@ -439,50 +932,51 @@ class PhotoMetricDistortion(object):
 
     def __call__(self, results):
         img = results['img']
+
         # random brightness
         if random.randint(2):
             delta = random.uniform(-self.brightness_delta,
-                                   self.brightness_delta)
-            img += delta
+                                    self.brightness_delta)
+            img = img + delta
 
         # mode == 0 --> do random contrast first
         # mode == 1 --> do random contrast last
         mode = random.randint(2)
-        if mode == 1:
-            if random.randint(2):
-                alpha = random.uniform(self.contrast_lower,
-                                       self.contrast_upper)
-                img *= alpha
-
-        # convert color from BGR to HSV
-        img = mmcv.bgr2hsv(img)
-
-        # random saturation
-        if random.randint(2):
-            img[..., 1] *= random.uniform(self.saturation_lower,
-                                          self.saturation_upper)
-
-        # random hue
-        if random.randint(2):
-            img[..., 0] += random.uniform(-self.hue_delta, self.hue_delta)
-            img[..., 0][img[..., 0] > 360] -= 360
-            img[..., 0][img[..., 0] < 0] += 360
-
-        # convert color from HSV to BGR
-        img = mmcv.hsv2bgr(img)
-
-        # random contrast
         if mode == 0:
             if random.randint(2):
                 alpha = random.uniform(self.contrast_lower,
                                        self.contrast_upper)
-                img *= alpha
+                img = img * alpha
+        
+        # convert color from BGR to HSV
+        img = mmcv.bgr2hsv(img.astype(np.uint8))
+
+        # random saturation
+        if random.randint(2):
+            img[..., 1] = img[..., 1] * random.uniform(self.saturation_lower,
+                                                       self.saturation_upper)
+
+        # random hue
+        if random.randint(2):
+            img[..., 0] = img[..., 0] + random.uniform(-self.hue_delta, self.hue_delta)
+            img[..., 0][img[..., 0] > 360] -= 360
+            img[..., 0][img[..., 0] < 0] += 360
+        
+        # convert color from HSV to BGR
+        img = mmcv.hsv2bgr(img.astype(np.uint8))
+
+        # random contrast
+        if mode == 1:
+            if random.randint(2):
+                alpha = random.uniform(self.contrast_lower,
+                                       self.contrast_upper)
+                img = img * alpha
 
         # randomly swap channels
         if random.randint(2):
             img = img[..., random.permutation(3)]
 
-        results['img'] = img
+        results['img'] = img.astype(np.uint8)
         return results
 
     def __repr__(self):
@@ -527,7 +1021,7 @@ class Expand(object):
         left = int(random.uniform(0, w * ratio - w))
         top = int(random.uniform(0, h * ratio - h))
         expand_img[top:top + h, left:left + w] = img
-        boxes += np.tile((left, top), 2)
+        boxes = boxes + np.tile((left, top), 2)
 
         results['img'] = expand_img
         results['gt_bboxes'] = boxes
@@ -600,7 +1094,7 @@ class MinIoURandomCrop(object):
                 boxes[:, 2:] = boxes[:, 2:].clip(max=patch[2:])
                 boxes[:, :2] = boxes[:, :2].clip(min=patch[:2])
                 boxes -= np.tile(patch[:2], 2)
-
+                
                 results['img'] = img
                 results['gt_bboxes'] = boxes
                 results['gt_labels'] = labels
