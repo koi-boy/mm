@@ -11,7 +11,6 @@ class Cutout(object):
     Args:
         normal_path: normal images path
     """
-
     def __init__(self, normal_path, cutout_ratio=0.5, mix_range=(0.5, 1)):
         self.normal_path = normal_path
         self.cutout_ratio = cutout_ratio
