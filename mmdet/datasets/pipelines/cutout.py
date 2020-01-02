@@ -16,7 +16,7 @@ class Cutout(object):
         self.normal_path = normal_path
         self.cutout_ratio = cutout_ratio
         self.mix_lower, self.mix_upper = mix_range
-        self.normal_imgs = np.array(glob(normal_path + '*.jpg'))
+        self.normal_imgs = glob(normal_path + '*.jpg')
 
     def __call__(self, results):
         cutout = True if np.random.rand() < self.cutout_ratio else False
