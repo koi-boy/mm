@@ -9,13 +9,13 @@ author: liusili
 @time: 10/20/19
 @desc:
 """
-from preprocess.datasets.voc2coco import Voc2Coco
-from data_explore.category_distribution import CategoryDist
-from preprocess.datasets.rename_coco_categories import RenameCategory
-from training.train import TrainMMDet
+from ..preprocess.datasets.voc2coco import Voc2Coco
+from ..data_explore.category_distribution import CategoryDist
+from ..preprocess.datasets.rename_coco_categories import RenameCategory
+from ..training.train import TrainMMDet
 from configs.auto_gen_config_file import generate_configs
-from testing.test import TestMMDetModel
-from metrics.test_result_analysis import ResultAnalysis
+from ..testing.test import TestMMDetModel
+from ..metrics.test_result_analysis import ResultAnalysis
 import os
 from configs.global_info import main_info
 

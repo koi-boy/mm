@@ -16,13 +16,13 @@ rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
 
-from preprocess.datasets.voc2coco import Voc2Coco
-from data_explore.category_distribution import CategoryDist
-from preprocess.datasets.rename_coco_categories import RenameCategory
-from training.train import TrainMMDet
+from ..preprocess.datasets.voc2coco import Voc2Coco
+from ..data_explore.category_distribution import CategoryDist
+from ..preprocess.datasets.rename_coco_categories import RenameCategory
+from ..training.train import TrainMMDet
 from configs.auto_gen_config_file import generate_configs
-from testing.test import TestMMDetModel
-from metrics.test_result_analysis import ResultAnalysis
+from ..testing.test import TestMMDetModel
+from ..metrics.test_result_analysis import ResultAnalysis
 from configs.global_info import main_info
 
 import torch
@@ -174,7 +174,7 @@ class MainFlow(object):
             train.start_training()
         else:
             # distributed training
-            from training import dist_train
+            from ..training import dist_train
             master_port = '25200'
             training_args = [config_file_]
             # training_args = [config_file_, '--validate']
