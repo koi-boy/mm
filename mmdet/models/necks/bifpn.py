@@ -17,7 +17,7 @@ class BIFPN(nn.Module):
                  end_level=-1,
                  stack=1,
                  add_extra_convs=False,
-                 add_extra_convs_before_bifpn=True,
+                 add_extra_convs_before_bifpn=False,
                  extra_convs_on_inputs=True,
                  relu_before_extra_convs=False,
                  no_norm_on_lateral=False,
@@ -48,13 +48,13 @@ class BIFPN(nn.Module):
         self.add_extra_convs_before_bifpn = add_extra_convs_before_bifpn
         self.add_extra_convs = add_extra_convs if not add_extra_convs_before_bifpn else True
         self.extra_convs_on_inputs = extra_convs_on_inputs if not self.add_extra_convs_before_bifpn else True
-        self.bifpn_input_levels = num_outs if self.add_extra_convs_before_bifpn else self.backbone_end_level
+        self.bifpn_input_levels = num_outs + self.start_level if self.add_extra_convs_before_bifpn else self.backbone_end_level
 
         # change input dimension to output dimension using 1x1 conv
         self.lateral_convs = nn.ModuleList()
         # extra fpn convs to get more feature maps
         self.fpn_convs = nn.ModuleList()
-        # stack several fpn module
+        # stack several bifpn module
         self.stack_bifpn_convs = nn.ModuleList()
 
         for i in range(self.start_level, self.backbone_end_level):

@@ -235,12 +235,12 @@ class Explorer():
 
 
 if __name__ == '__main__':
-    img_dir = r'D:\Project\WHTM\data\21101\train_test\train'
+    img_dir = r'D:\Project\chongqing_contest\data\chongqing1_round1_train1_20191223\top\all'
     # ann_dir = r'D:\Project\chongqing_contest\data\chongqing1_round1_train1_20191223\defect_xmls'
-    json_file = r'D:\Project\WHTM\data\21101\train_test\train.json'
-    classes_file = r'D:\Project\WHTM\document\21101\classes.txt'
+    json_file = r'D:\Project\chongqing_contest\data\chongqing1_round1_train1_20191223\top\all.json'
+    classes_file = r'D:\Project\chongqing_contest\data\chongqing1_round1_train1_20191223\top\classes.txt'
     #id_file = r'D:\Project\chongqing_contest\data\chongqing1_round1_train1_20191223\train_test_dataset\bottom\id.txt'
-    id_file = None
+    id_file = r'D:\Project\chongqing_contest\data\chongqing1_round1_train1_20191223\top\id.txt'
     explorer = Explorer(json_file, img_dir, classes_file, id_file)
     explorer.plot_center(mode='original', with_size=True, size_meaning='score')
     explorer.plot_category_count_bar()

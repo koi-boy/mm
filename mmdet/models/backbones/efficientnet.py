@@ -21,6 +21,7 @@ from .utils import (
 import logging
 from ..registry import BACKBONES
 
+
 class MBConvBlock(nn.Module):
     """
     Mobile Inverted Residual Bottleneck Block
@@ -104,25 +105,24 @@ class MBConvBlock(nn.Module):
         """Sets swish function as memory efficient (for training) or standard (for export)"""
         self._swish = MemoryEfficientSwish() if memory_efficient else Swish()
 
+
 @BACKBONES.register_module
 class EfficientNet(nn.Module):
     """
-    An EfficientNet model. Most easily loaded with the .from_name or .from_pretrained methods
-
-    Args:
-        blocks_args (list): A list of BlockArgs to construct blocks
-        global_params (namedtuple): A set of GlobalParams shared between blocks
-
-    Example:
-        model = EfficientNet.from_pretrained('efficientnet-b0')
-
+    efficientnet model
     """
 
     def __init__(self,
                  modelname='efficientnet-b7',
-                 out_indices=None,
+                 out_indices=(0, 1, 2, 3),
                  frozen_stages=-1
                  ):
+        """
+
+        :param modelname:
+        :param out_indices: 0 indicates feature map of stride 4, and 3 indicates stride 32
+        :param frozen_stages:
+        """
         super().__init__()
         self._model_name = modelname
         blocks_args, global_params = self.from_name(self._model_name)
@@ -131,10 +131,8 @@ class EfficientNet(nn.Module):
         self._global_params = global_params
         self._blocks_args = blocks_args
         self.frozen_stages = frozen_stages
-        if out_indices is not None:
-            self.out_indices = out_indices
-        else:
-            self.out_indices = self.get_output_indices(modelname)
+        self.out_indices = self.get_output_indices(modelname,
+                                                   out_indices)
         print(self._global_params, self._blocks_args)
 
         # Get static or dynamic convolution depending on image size
@@ -151,8 +149,9 @@ class EfficientNet(nn.Module):
         self._bn0 = nn.BatchNorm2d(num_features=out_channels, momentum=bn_mom, eps=bn_eps)
 
         # Build blocks
-        self._blocks = nn.ModuleList([])
-        for block_args in self._blocks_args:
+        self._stages = nn.ModuleList([])
+        for idx, block_args in enumerate(self._blocks_args):
+            _blocks = nn.Sequential()
             # Update block input and output filters based on depth multiplier.
             block_args = block_args._replace(
                 input_filters=round_filters(block_args.input_filters, self._global_params),
@@ -160,14 +159,14 @@ class EfficientNet(nn.Module):
                 num_repeat=round_repeats(block_args.num_repeat, self._global_params)
             )
             print(block_args)
-            print('-'*100)
+            print('-' * 100)
             # The first block needs to take care of stride and filter size increase.
-            self._blocks.append(MBConvBlock(block_args, self._global_params))
+            _blocks.add_module('block_{}_0'.format(idx), MBConvBlock(block_args, self._global_params))
             if block_args.num_repeat > 1:
                 block_args = block_args._replace(input_filters=block_args.output_filters, stride=1)
-            for _ in range(block_args.num_repeat - 1):
-                self._blocks.append(MBConvBlock(block_args, self._global_params))
-
+            for ii in range(block_args.num_repeat - 1):
+                _blocks.add_module('block_{}_{}'.format(idx, ii + 1), MBConvBlock(block_args, self._global_params))
+            self._stages.append(_blocks)
 
         # Head
         # in_channels = block_args.output_filters  # output of final block
@@ -195,7 +194,7 @@ class EfficientNet(nn.Module):
 
         frozen_stages_idx = list(range(1, self.frozen_stages + 1))
         for idx, m in enumerate(self._blocks):
-            if idx+1 in frozen_stages_idx:
+            if idx + 1 in frozen_stages_idx:
                 m.eval()
                 for param in m.parameters():
                     param.requires_grad = False
@@ -213,20 +212,19 @@ class EfficientNet(nn.Module):
         else:
             raise TypeError('pretrained must be a str and should not be None')
 
-
     def extract_features(self, inputs):
         """ Returns output of the final convolution layer """
 
         # Stem
         x = self._swish(self._bn0(self._conv_stem(inputs)))
-
         # Blocks
         outs = []
-        for idx, block in enumerate(self._blocks):
-            drop_connect_rate = self._global_params.drop_connect_rate
-            if drop_connect_rate:
-                drop_connect_rate *= float(idx) / len(self._blocks)
-            x = block(x, drop_connect_rate=drop_connect_rate)
+        for idx, stage in enumerate(self._stages):
+            # TODO: find out what's the effect of drop_connect_rate and how to implement it in sequence model
+            # drop_connect_rate = self._global_params.drop_connect_rate
+            # if drop_connect_rate:
+            #     drop_connect_rate *= float(idx) / len(self._blocks)
+            x = stage(x)
             if idx in self.out_indices:
                 outs.append(x)
 
@@ -256,15 +254,15 @@ class EfficientNet(nn.Module):
         return blocks_args, global_params
 
     @classmethod
-    def from_pretrained(cls, model_name, num_classes=1000, in_channels = 3):
+    def from_pretrained(cls, model_name, num_classes=1000, in_channels=3):
         model = cls.from_name(model_name, override_params={'num_classes': num_classes})
         load_pretrained_weights(model, model_name, load_fc=(num_classes == 1000))
         if in_channels != 3:
-            Conv2d = get_same_padding_conv2d(image_size = model._global_params.image_size)
+            Conv2d = get_same_padding_conv2d(image_size=model._global_params.image_size)
             out_channels = round_filters(32, model._global_params)
             model._conv_stem = Conv2d(in_channels, out_channels, kernel_size=3, stride=2, bias=False)
         return model
-    
+
     @classmethod
     def from_pretrained(cls, model_name, num_classes=1000):
         model = cls.from_name(model_name, override_params={'num_classes': num_classes})
@@ -283,15 +281,15 @@ class EfficientNet(nn.Module):
         """ Validates model name. None that pretrained weights are only available for
         the first four models (efficientnet-b{i} for i in 0,1,2,3) at the moment. """
         num_models = 4 if also_need_pretrained_weights else 8
-        valid_models = ['efficientnet-b'+str(i) for i in range(num_models)]
+        valid_models = ['efficientnet-b' + str(i) for i in range(num_models)]
         if model_name not in valid_models:
-           raise ValueError('model_name should be one of: ' + ', '.join(valid_models))
+            raise ValueError('model_name should be one of: ' + ', '.join(valid_models))
 
     @staticmethod
-    def get_output_indices(modelname):
-        output_indices_dict = {'efficientnet-b4': (5, 9, 21, 31),
-                               'efficientnet-b5': (7, 12, 26, 38),
-                               'efficientnet-b6': (8, 14, 30, 44),
-                               'efficientnet-b7': (10, 17, 37, 54),
+    def get_output_indices(modelname, ori_out_indices):
+        output_indices_dict = {'efficientnet-b4': (1, 2, 4, 6),
+                               'efficientnet-b5': (1, 2, 4, 6),
+                               'efficientnet-b6': (1, 2, 4, 6),
+                               'efficientnet-b7': (1, 2, 4, 6),
                                }
-        return output_indices_dict[modelname]
+        return tuple([output_indices_dict[modelname][i] for i in ori_out_indices])

@@ -11,7 +11,6 @@ from mmdet.apis import (get_root_logger, init_dist, set_random_seed,
 from mmdet.datasets import build_dataset
 from mmdet.models import build_detector
 
-
 # def parse_args():
 #     parser = argparse.ArgumentParser(description='Train a detector')
 #     parser.add_argument('config', help='train config file path')
@@ -44,7 +43,6 @@ from mmdet.models import build_detector
 #         os.environ['LOCAL_RANK'] = str(args.local_rank)
 #
 #     return args
-
 
 def main(config,
          work_dir=None,
@@ -117,6 +115,8 @@ def main(config,
         logger=logger)
 
 
+
+
 if __name__ == '__main__':
-    config = r'/data/sdv1/whtm/mmdet_cq/CQ_cfg/test_faster_efficientnet.py'
+    config = r'/data/sdv1/whtm/mmdet_cq/CQ_cfg/test_efficientdet.py'
     main(config, validate=True)
