@@ -1,5 +1,5 @@
 # fp16 settings
-fp16 = dict(loss_scale=512.)
+# fp16 = dict(loss_scale=512.)
 # model settings
 model = dict(
     type='FasterRCNN',
@@ -11,13 +11,10 @@ model = dict(
         # out_indices=None,
         frozen_stages=-1),
     neck=dict(
-        type='BIFPN',
+        type='FPN',
         in_channels=[40, 64, 176, 512],
         out_channels=256,
-        num_outs=5,
-        stack=7,
-        add_extra_convs_before_bifpn=True,
-        activation='relu'),
+        num_outs=5),
     rpn_head=dict(
         type='RPNHead',
         in_channels=256,
@@ -110,7 +107,7 @@ img_norm_cfg = dict(
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', with_bbox=True),
-    dict(type='Resize', img_scale=(672, 512), keep_ratio=True),
+    dict(type='Resize', img_scale=(800, 800), keep_ratio=True),
     dict(type='RandomFlip', flip_ratio=0.),
     # dict(type='BBoxJitter', min=0.9, max=1.1),
     dict(type='Normalize', **img_norm_cfg),
@@ -122,7 +119,7 @@ test_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(
         type='MultiScaleFlipAug',
-        img_scale=(672, 512),
+        img_scale=(800, 800),
         flip=False,
         transforms=[
             dict(type='Resize', keep_ratio=True),
@@ -152,7 +149,7 @@ data = dict(
         img_prefix=data_root + 'val/',
         pipeline=test_pipeline))
 # optimizer
-optimizer = dict(type='SGD', lr=0.0025, momentum=0.9, weight_decay=0.0001)
+optimizer = dict(type='SGD', lr=0.01, momentum=0.9, weight_decay=0.0001)
 optimizer_config = dict(grad_clip=dict(max_norm=35, norm_type=2))
 # learning policy
 lr_config = dict(
@@ -160,7 +157,7 @@ lr_config = dict(
     warmup='linear',
     warmup_iters=500,
     warmup_ratio=1.0 / 3,
-    step=[16, 22])
+    step=[24, 32])
 checkpoint_config = dict(interval=1)
 # yapf:disable
 log_config = dict(
@@ -171,7 +168,7 @@ log_config = dict(
     ])
 # yapf:enable
 # runtime settings
-total_epochs = 24
+total_epochs = 36
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
 work_dir = '../a/CQ_work_dirs/test_faster'
