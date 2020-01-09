@@ -115,9 +115,10 @@ class EfficientNet(nn.Module):
     def __init__(self,
                  modelname='efficientnet-b7',
                  out_indices=(0, 1, 2, 3),
-                 frozen_stages=-1
+                 frozen_stages=-1,
+                 num_classes=None,
                  ):
-        """
+        """s
 
         :param modelname:
         :param out_indices: 0 indicates feature map of stride 4, and 3 indicates stride 32
@@ -133,6 +134,7 @@ class EfficientNet(nn.Module):
         self.frozen_stages = frozen_stages
         self.out_indices = self.get_output_indices(modelname,
                                                    out_indices)
+        self.num_classes = self._global_params.num_classes if num_classes is None else num_classes
         print(self._global_params, self._blocks_args)
 
         # Get static or dynamic convolution depending on image size
@@ -169,16 +171,18 @@ class EfficientNet(nn.Module):
             self._stages.append(_blocks)
 
         # Head
-        # in_channels = block_args.output_filters  # output of final block
-        # out_channels = round_filters(1280, self._global_params)
-        # self._conv_head = Conv2d(in_channels, out_channels, kernel_size=1, bias=False)
-        # self._bn1 = nn.BatchNorm2d(num_features=out_channels, momentum=bn_mom, eps=bn_eps)
-        #
+        in_channels = block_args.output_filters  # output of final block
+        out_channels = round_filters(1280, self._global_params)
+        self._conv_head = Conv2d(in_channels, out_channels, kernel_size=1, bias=False)
+        self._bn1 = nn.BatchNorm2d(num_features=out_channels, momentum=bn_mom, eps=bn_eps)
+
         # Final linear layer
-        # self._avg_pooling = nn.AdaptiveAvgPool2d(1)
-        # self._dropout = nn.Dropout(self._global_params.dropout_rate)
-        # self._fc = nn.Linear(out_channels, self._global_params.num_classes)
+        self._avg_pooling = nn.AdaptiveAvgPool2d(1)
+        self._dropout = nn.Dropout(self._global_params.dropout_rate)
+        self._fc = nn.Linear(out_channels, self.num_classes)
         self._swish = MemoryEfficientSwish()
+
+        self._freeze_stages()
 
     def set_swish(self, memory_efficient=True):
         """Sets swish function as memory efficient (for training) or standard (for export)"""
@@ -193,7 +197,7 @@ class EfficientNet(nn.Module):
                     param.requires_grad = False
 
         frozen_stages_idx = list(range(1, self.frozen_stages + 1))
-        for idx, m in enumerate(self._blocks):
+        for idx, m in enumerate(self._stages):
             if idx + 1 in frozen_stages_idx:
                 m.eval()
                 for param in m.parameters():
