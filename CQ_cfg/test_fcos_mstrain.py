@@ -1,6 +1,6 @@
 # model settings
 model = dict(
-    type='EfficientDet',
+    type='FCOS',
     pretrained='/data/sdv1/whtm/model/efficientnet/efficientnet_b4_finetuned_0108.pth',
     backbone=dict(
         type='EfficientNet',
@@ -8,39 +8,29 @@ model = dict(
         out_indices=(1, 2, 3),
         frozen_stages=-1),
     neck=dict(
-        type='BIFPN',
+        type='FPN',
         in_channels=[56, 160, 448],
-        out_channels=224,
-        start_level=0,
-        add_extra_convs_before_bifpn=True,
+        out_channels=256,
+        add_extra_convs=True,
+        extra_convs_on_inputs=False,  # use P5
         num_outs=5,
-        stack=6,
-        norm_cfg={'type': 'BN'},
-        activation='relu'),
+        relu_before_extra_convs=True),
     bbox_head=dict(
-        type='RetinaHead',
+        type='FCOSHead',
         num_classes=8,
-        in_channels=224,
+        in_channels=256,
         stacked_convs=4,
-        feat_channels=224,
-        octave_base_scale=4,
-        scales_per_octave=3,
-        anchor_ratios=[0.2, 0.5, 1.0, 2.0, 5.0],
-        anchor_strides=[8, 16, 32, 64, 128],
-        target_means=[.0, .0, .0, .0],
-        target_stds=[1.0, 1.0, 1.0, 1.0],
+        feat_channels=256,
+        strides=[8, 16, 32, 64, 128],
         loss_cls=dict(
             type='FocalLoss',
             use_sigmoid=True,
-            gamma=1.5,
+            gamma=2.0,
             alpha=0.25,
             loss_weight=1.0),
-        loss_bbox=dict(
-            type='BalancedL1Loss',
-            alpha=0.5,
-            gamma=1.5,
-            beta=1.0,
-            loss_weight=1.0)))
+        loss_bbox=dict(type='IoULoss', loss_weight=1.0),
+        loss_centerness=dict(
+            type='CrossEntropyLoss', use_sigmoid=True, loss_weight=1.0)))
 # training and testing settings
 train_cfg = dict(
     assigner=dict(
@@ -66,7 +56,11 @@ img_norm_cfg = dict(
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', with_bbox=True),
-    dict(type='Resize', img_scale=(1024, 1024), keep_ratio=True),
+    dict(
+        type='Resize',
+        img_scale=(1024, 1024),
+        # multiscale_mode='value',
+        keep_ratio=True),
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='Normalize', **img_norm_cfg),
     dict(type='Pad', size_divisor=128),
@@ -103,20 +97,25 @@ data = dict(
         pipeline=test_pipeline),
     test=dict(
         type=dataset_type,
-        ann_file=data_root + 'train.json',
-        img_prefix=data_root + 'train/',
+        ann_file=data_root + 'val.json',
+        img_prefix=data_root + 'val/',
         pipeline=test_pipeline))
 # optimizer
-optimizer = dict(type='SGD', lr=0.001, momentum=0.9, weight_decay=0.00004)
-optimizer_config = dict(grad_clip=dict(max_norm=35, norm_type=2))
+optimizer = dict(
+    type='SGD',
+    lr=0.005,
+    momentum=0.9,
+    weight_decay=0.0001,
+    paramwise_options=dict(bias_lr_mult=2., bias_decay_mult=0.))
+optimizer_config = dict(grad_clip=None)
 # learning policy
 lr_config = dict(
     policy='cosine',
-    target_lr=0.0,
+    target_lr=0.0001,
     warmup='linear',
     warmup_iters=600,
     warmup_ratio=1.0 / 3)
-checkpoint_config = dict(interval=3)
+checkpoint_config = dict(interval=1)
 # yapf:disable
 log_config = dict(
     interval=50,
@@ -130,7 +129,7 @@ total_epochs = 24
 device_ids = range(8)
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-work_dir = '../a/CQ_work_dirs/test_efficientdet_0109'
-load_from = '/data/sdv1/whtm/a/CQ_work_dirs/test_efficientdet_0109/epoch_12.pth'
+work_dir = '../a/CQ_work_dirs/test_fcos'
+load_from = None
 resume_from = None
 workflow = [('train', 1)]

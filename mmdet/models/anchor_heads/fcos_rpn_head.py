@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from mmcv.cnn import normal_init
 
+from mmdet.ops import nms
 from mmdet.core import distance2bbox, force_fp32, multi_apply, multiclass_nms
 from ..builder import build_loss
 from ..registry import HEADS
@@ -11,11 +12,11 @@ INF = 1e8
 
 
 @HEADS.register_module
-class FCOSHead(nn.Module):
+class FCOSRPNHead(nn.Module):
 
     def __init__(self,
-                 num_classes,
                  in_channels,
+                 num_classes=2,
                  feat_channels=256,
                  stacked_convs=4,
                  strides=(4, 8, 16, 32, 64),
@@ -34,7 +35,7 @@ class FCOSHead(nn.Module):
                      loss_weight=1.0),
                  conv_cfg=None,
                  norm_cfg=dict(type='GN', num_groups=32, requires_grad=True)):
-        super(FCOSHead, self).__init__()
+        super(FCOSRPNHead, self).__init__()
 
         self.num_classes = num_classes
         self.cls_out_channels = num_classes - 1
@@ -179,6 +180,7 @@ class FCOSHead(nn.Module):
             loss_centerness = self.loss_centerness(pos_centerness,
                                                    pos_centerness_targets)
         else:
+            # if there are no pos, loss_bbox and loss_centerness is set to 0
             loss_bbox = pos_bbox_preds.sum()
             loss_centerness = pos_centerness.sum()
 
@@ -196,6 +198,7 @@ class FCOSHead(nn.Module):
                    cfg,
                    rescale=None):
         assert len(cls_scores) == len(bbox_preds)
+        # TODO: output proposals
         num_levels = len(cls_scores)
 
         featmap_sizes = [featmap.size()[-2:] for featmap in cls_scores]
@@ -230,12 +233,15 @@ class FCOSHead(nn.Module):
                           scale_factor,
                           cfg,
                           rescale=False):
+        # TODO: change output to proposals without labels
         assert len(cls_scores) == len(bbox_preds) == len(mlvl_points)
-        mlvl_bboxes = []
-        mlvl_scores = []
-        mlvl_centerness = []
+        # mlvl_bboxes = []
+        # mlvl_scores = []
+        # mlvl_centerness = []
+        mlvl_proposals = []
         for cls_score, bbox_pred, centerness, points in zip(
                 cls_scores, bbox_preds, centernesses, mlvl_points):
+            # iteration by levels
             assert cls_score.size()[-2:] == bbox_pred.size()[-2:]
             scores = cls_score.permute(1, 2, 0).reshape(
                 -1, self.cls_out_channels).sigmoid()
@@ -250,25 +256,27 @@ class FCOSHead(nn.Module):
                 bbox_pred = bbox_pred[topk_inds, :]
                 scores = scores[topk_inds, :]
                 centerness = centerness[topk_inds]
-            bboxes = distance2bbox(points, bbox_pred, max_shape=img_shape)
-            mlvl_bboxes.append(bboxes)
-            mlvl_scores.append(scores)
-            mlvl_centerness.append(centerness)
-        mlvl_bboxes = torch.cat(mlvl_bboxes)
-        if rescale:
-            mlvl_bboxes /= mlvl_bboxes.new_tensor(scale_factor)
-        mlvl_scores = torch.cat(mlvl_scores)
-        padding = mlvl_scores.new_zeros(mlvl_scores.shape[0], 1)
-        mlvl_scores = torch.cat([padding, mlvl_scores], dim=1)
-        mlvl_centerness = torch.cat(mlvl_centerness)
-        det_bboxes, det_labels = multiclass_nms(
-            mlvl_bboxes,
-            mlvl_scores,
-            cfg.score_thr,
-            cfg.nms,
-            cfg.max_per_img,
-            score_factors=mlvl_centerness)
-        return det_bboxes, det_labels
+            scores = scores.squeeze()
+            scores *= centerness
+            proposals = distance2bbox(points, bbox_pred, max_shape=img_shape)
+            proposals = torch.cat([proposals, scores.unsqueeze(-1)], dim=-1)
+            proposals, _ = nms(proposals, cfg.nms_thr)
+            proposals = proposals[:cfg.nms_post, :]
+            mlvl_proposals.append(proposals)
+            # mlvl_bboxes.append(bboxes)
+            # mlvl_scores.append(scores)
+            # mlvl_centerness.append(centerness)
+        proposals = torch.cat(mlvl_proposals, 0)
+        if cfg.nms_across_levels:
+            proposals, _ = nms(proposals, cfg.nms_thr)
+            proposals = proposals[:cfg.max_num, :]
+        else:
+            scores = proposals[:, 4]
+            num = min(cfg.max_num, proposals.shape[0])
+            _, topk_inds = scores.topk(num)
+            proposals = proposals[topk_inds, :]
+
+        return proposals
 
     def get_points(self, featmap_sizes, dtype, device):
         """Get points according to feature map sizes.
@@ -290,6 +298,8 @@ class FCOSHead(nn.Module):
 
     def get_points_single(self, featmap_size, stride, dtype, device):
         h, w = featmap_size
+        # arange does not include end
+        # range does include end
         x_range = torch.arange(
             0, w * stride, stride, dtype=dtype, device=device)
         y_range = torch.arange(
@@ -300,9 +310,14 @@ class FCOSHead(nn.Module):
         return points
 
     def fcos_target(self, points, gt_bboxes_list, gt_labels_list):
+        # TODO: cls targets are foreground and background
+        # levels
         assert len(points) == len(self.regress_ranges)
         num_levels = len(points)
         # expand regress ranges to align with points
+        # new_tensor will create a new tensor whose dtype and device is same with the tensor before
+        # Expand this tensor to the same size as other.
+        # self.expand_as(other) is equivalent to self.expand(other.size())
         expanded_regress_ranges = [
             points[i].new_tensor(self.regress_ranges[i])[None].expand_as(
                 points[i]) for i in range(num_levels)
@@ -338,24 +353,36 @@ class FCOSHead(nn.Module):
         return concat_lvl_labels, concat_lvl_bbox_targets
 
     def fcos_target_single(self, gt_bboxes, gt_labels, points, regress_ranges):
+        # points are the same for all images in the batch
+        # points are concat result from all features level
         num_points = points.size(0)
         num_gts = gt_labels.size(0)
+        # change gt labels to 1(foreground)
+        gt_labels = gt_labels.new_ones(num_gts)
         if num_gts == 0:
+            # there is no gts in this image
             return gt_labels.new_zeros(num_points), \
                    gt_bboxes.new_zeros((num_points, 4))
 
+        # calculate the size of all gt bboxes
         areas = (gt_bboxes[:, 2] - gt_bboxes[:, 0] + 1) * (
             gt_bboxes[:, 3] - gt_bboxes[:, 1] + 1)
         # TODO: figure out why these two are different
         # areas = areas[None].expand(num_points, num_gts)
+        # Repeats this tensor along the specified dimensions.
+        # repeat areas for all points
         areas = areas[None].repeat(num_points, 1)
+        # add a new dimension for regress ranges and expand it for all gts(in the middle dimension)
         regress_ranges = regress_ranges[:, None, :].expand(
             num_points, num_gts, 2)
+        # expand gts for all points
         gt_bboxes = gt_bboxes[None].expand(num_points, num_gts, 4)
+        # expand x, y for all gts
         xs, ys = points[:, 0], points[:, 1]
         xs = xs[:, None].expand(num_points, num_gts)
         ys = ys[:, None].expand(num_points, num_gts)
 
+        # calculate the regress target l, r, t, b
         left = xs - gt_bboxes[..., 0]
         right = gt_bboxes[..., 2] - xs
         top = ys - gt_bboxes[..., 1]
@@ -373,6 +400,7 @@ class FCOSHead(nn.Module):
 
         # if there are still more than one objects for a location,
         # we choose the one with minimal area
+        # change bbox area to INF if the condition is not satisfied so it won't be chosen
         areas[inside_gt_bbox_mask == 0] = INF
         areas[inside_regress_range == 0] = INF
         min_area, min_area_inds = areas.min(dim=1)

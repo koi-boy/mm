@@ -7,8 +7,9 @@ from .retina_head import RetinaHead
 from .rpn_head import RPNHead
 from .ssd_head import SSDHead
 from .efficientdet_head import EfficientDetHead
+from .fcos_rpn_head import FCOSRPNHead
 
 __all__ = [
     'AnchorHead', 'GuidedAnchorHead', 'FeatureAdaption', 'RPNHead',
-    'GARPNHead', 'RetinaHead', 'GARetinaHead', 'SSDHead', 'FCOSHead', 'EfficientDetHead'
+    'GARPNHead', 'RetinaHead', 'GARetinaHead', 'SSDHead', 'FCOSHead', 'EfficientDetHead', 'FCOSRPNHead'
 ]

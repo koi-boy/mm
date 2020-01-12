@@ -39,6 +39,7 @@ class CascadeRCNN(BaseDetector, RPNTestMixin):
 
         if rpn_head is not None:
             self.rpn_head = builder.build_head(rpn_head)
+            self.fcos_flag = rpn_head['type'] == 'FCOSRPNHead'
 
         if shared_head is not None:
             self.shared_head = builder.build_shared_head(shared_head)
@@ -160,9 +161,21 @@ class CascadeRCNN(BaseDetector, RPNTestMixin):
 
         losses = dict()
 
-        if self.with_rpn:
+        if self.with_rpn and (not self.fcos_flag):
             rpn_outs = self.rpn_head(x)
             rpn_loss_inputs = rpn_outs + (gt_bboxes, img_meta,
+                                          self.train_cfg.rpn)
+            rpn_losses = self.rpn_head.loss(
+                *rpn_loss_inputs, gt_bboxes_ignore=gt_bboxes_ignore)
+            losses.update(rpn_losses)
+
+            proposal_cfg = self.train_cfg.get('rpn_proposal',
+                                              self.test_cfg.rpn)
+            proposal_inputs = rpn_outs + (img_meta, proposal_cfg)
+            proposal_list = self.rpn_head.get_bboxes(*proposal_inputs)
+        elif self.with_rpn and self.fcos_flag:
+            rpn_outs = self.rpn_head(x)
+            rpn_loss_inputs = rpn_outs + (gt_bboxes, gt_labels, img_meta,
                                           self.train_cfg.rpn)
             rpn_losses = self.rpn_head.loss(
                 *rpn_loss_inputs, gt_bboxes_ignore=gt_bboxes_ignore)
