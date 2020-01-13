@@ -1280,7 +1280,7 @@ def select_and_apply_random_policy(policies, image, bboxes):
     # larger graphs and would even break export for some larger policies.
     for (i, policy) in enumerate(policies):
         if policy_to_select == i:
-            print('chosen policy: ', i)
+            # print('chosen policy: ', i)
             image, bboxes = policy(image, bboxes)
         else:
             image, bboxes = image, bboxes
