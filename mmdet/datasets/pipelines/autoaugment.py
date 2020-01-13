@@ -64,7 +64,7 @@ class AutoAugment(object):
             augmented_bboxes_.append([xmin, ymin, xmax, ymax])
 
         results['img'] = augmented_image
-        results['gt_bboxes'] = np.array(augmented_bboxes_)
+        results['gt_bboxes'] = np.array(augmented_bboxes_, dtype=np.float32)
         return results
 
     def __repr__(self):
