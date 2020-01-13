@@ -1,17 +1,15 @@
 # model settings
 model = dict(
     type='FasterRCNN',
-    pretrained='/data/sdv1/whtm/model/resnet/resnet50.pth',
+    pretrained='/data/sdv1/whtm/model/efficientnet/efficientnet_b4_finetuned_0108.pth',
     backbone=dict(
-        type='ResNet',
-        depth=50,
-        num_stages=4,
+        type='EfficientNet',
+        modelname='efficientnet-b4',
         out_indices=(0, 1, 2, 3),
-        frozen_stages=-1,
-        style='pytorch'),
+        frozen_stages=-1),
     neck=dict(
         type='FPN',
-        in_channels=[256, 512, 1024, 2048],
+        in_channels=[32, 56, 160, 448],
         out_channels=256,
         num_outs=5),
     rpn_head=dict(
@@ -19,7 +17,7 @@ model = dict(
         in_channels=256,
         feat_channels=256,
         anchor_scales=[8],
-        anchor_ratios=[0.5, 1.0, 2.0],
+        anchor_ratios=[0.2, 0.5, 1.0, 2.0, 5.0],
         anchor_strides=[4, 8, 16, 32, 64],
         target_means=[.0, .0, .0, .0],
         target_stds=[1.0, 1.0, 1.0, 1.0],
@@ -37,7 +35,7 @@ model = dict(
         in_channels=256,
         fc_out_channels=1024,
         roi_feat_size=7,
-        num_classes=4,
+        num_classes=8,
         target_means=[0., 0., 0., 0.],
         target_stds=[0.1, 0.1, 0.2, 0.2],
         reg_class_agnostic=False,
@@ -93,22 +91,22 @@ test_cfg = dict(
         nms_thr=0.7,
         min_bbox_size=0),
     rcnn=dict(
-        score_thr=0., nms=dict(type='nms', iou_thr=0.3), max_per_img=100)
+        score_thr=0.05, nms=dict(type='nms', iou_thr=0.3), max_per_img=100)
     # soft-nms is also supported for rcnn testing
     # e.g., nms=dict(type='soft_nms', iou_thr=0.5, min_score=0.05)
 )
 # dataset settings
 dataset_type = 'CocoDataset'
-data_root = '/data/sdv1/whtm/data/cq/'
+data_root = '/data/sdv1/whtm/data/cq/top/'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', with_bbox=True),
-    dict(type='Resize', img_scale=(1000, 1000), keep_ratio=True),
+    dict(type='Resize', img_scale=(1024, 1024), keep_ratio=True),
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='Normalize', **img_norm_cfg),
-    dict(type='Pad', size_divisor=32),
+    dict(type='Pad', size_divisor=64),
     dict(type='DefaultFormatBundle'),
     dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels']),
 ]
@@ -116,13 +114,13 @@ test_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(
         type='MultiScaleFlipAug',
-        img_scale=(1000, 1000),
+        img_scale=(1024, 1024),
         flip=False,
         transforms=[
             dict(type='Resize', keep_ratio=True),
             dict(type='RandomFlip'),
             dict(type='Normalize', **img_norm_cfg),
-            dict(type='Pad', size_divisor=32),
+            dict(type='Pad', size_divisor=64),
             dict(type='ImageToTensor', keys=['img']),
             dict(type='Collect', keys=['img']),
         ])
@@ -150,12 +148,12 @@ optimizer = dict(type='SGD', lr=0.005, momentum=0.9, weight_decay=0.0001)
 optimizer_config = dict(grad_clip=dict(max_norm=35, norm_type=2))
 # learning policy
 lr_config = dict(
-    policy='step',
+    policy='cosine',
+    target_lr=0.0,
     warmup='linear',
-    warmup_iters=500,
-    warmup_ratio=1.0 / 3,
-    step=[8, 11])
-checkpoint_config = dict(interval=1)
+    warmup_iters=600,
+    warmup_ratio=1.0 / 3)
+checkpoint_config = dict(interval=3)
 # yapf:disable
 log_config = dict(
     interval=30,
@@ -165,10 +163,10 @@ log_config = dict(
     ])
 # yapf:enable
 # runtime settings
-total_epochs = 12
+total_epochs = 24
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-work_dir = '/data/sdv1/whtm/a/CQ_work_dirs/faster_rcnn_r50_fpn_1x'
+work_dir = '../a/CQ_work_dirs/test_faster_rcnn'
 load_from = None
 resume_from = None
 workflow = [('train', 1)]

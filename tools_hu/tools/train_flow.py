@@ -118,5 +118,5 @@ def main(config,
 
 
 if __name__ == '__main__':
-    config = r'/data/sdv1/whtm/mmdet_cq/CQ_cfg/test_efficientdet.py'
+    config = r'/data/sdv1/whtm/mmdet_cq/CQ_cfg/test_cascade.py'
     main(config, validate=True)

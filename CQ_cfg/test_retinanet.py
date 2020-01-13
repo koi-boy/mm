@@ -1,6 +1,6 @@
 # model settings
 model = dict(
-    type='EfficientDet',
+    type='RetinaNet',
     pretrained='/data/sdv1/whtm/model/efficientnet/efficientnet_b4_finetuned_0108.pth',
     backbone=dict(
         type='EfficientNet',
@@ -8,21 +8,18 @@ model = dict(
         out_indices=(1, 2, 3),
         frozen_stages=-1),
     neck=dict(
-        type='BIFPN',
+        type='FPN',
         in_channels=[56, 160, 448],
-        out_channels=224,
+        out_channels=256,
         start_level=0,
-        add_extra_convs_before_bifpn=True,
-        num_outs=5,
-        stack=6,
-        norm_cfg={'type': 'BN'},
-        activation='relu'),
+        add_extra_convs=True,
+        num_outs=5),
     bbox_head=dict(
         type='RetinaHead',
         num_classes=8,
-        in_channels=224,
+        in_channels=256,
         stacked_convs=4,
-        feat_channels=224,
+        feat_channels=256,
         octave_base_scale=4,
         scales_per_octave=3,
         anchor_ratios=[0.2, 0.5, 1.0, 2.0, 5.0],
@@ -32,11 +29,10 @@ model = dict(
         loss_cls=dict(
             type='FocalLoss',
             use_sigmoid=True,
-            gamma=1.5,
+            gamma=2.0,
             alpha=0.25,
             loss_weight=1.0),
-        loss_bbox=dict(
-            type='BalancedL1Loss',
+        loss_bbox=dict(type='BalancedL1Loss',
             alpha=0.5,
             gamma=1.5,
             beta=1.0,
@@ -107,7 +103,7 @@ data = dict(
         img_prefix=data_root + 'train/',
         pipeline=test_pipeline))
 # optimizer
-optimizer = dict(type='SGD', lr=0.001, momentum=0.9, weight_decay=0.00004)
+optimizer = dict(type='SGD', lr=0.005, momentum=0.9, weight_decay=0.0001)
 optimizer_config = dict(grad_clip=dict(max_norm=35, norm_type=2))
 # learning policy
 lr_config = dict(
@@ -130,7 +126,7 @@ total_epochs = 24
 device_ids = range(8)
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-work_dir = '../a/CQ_work_dirs/test_efficientdet_0109'
-load_from = '/data/sdv1/whtm/a/CQ_work_dirs/test_efficientdet_0109/epoch_12.pth'
+work_dir = '../a/CQ_work_dirs/test_retinanet'
+load_from = None
 resume_from = None
 workflow = [('train', 1)]
