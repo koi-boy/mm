@@ -9,7 +9,8 @@ from .transforms import (Expand, MinIoURandomCrop, Normalize, Pad,
                          RandomVerticalFlip, RandomRotate, RandomBrightness,
                          RandomContrast, RandomColor, RandomNoise, RandomFilter,
                          BBoxJitter)
-from .cutout import Cutout
+from .matting import Matting
+from .autoaugment import AutoAugment
 
 __all__ = [
     'Compose', 'to_tensor', 'ToTensor', 'ImageToTensor', 'ToDataContainer',
@@ -19,5 +20,5 @@ __all__ = [
     'Expand', 'PhotoMetricDistortion',
     'RandomVerticalFlip', 'RandomRotate', 'RandomBrightness',
     'RandomContrast', 'RandomColor', 'RandomNoise', 'RandomFilter',
-    'BBoxJitter', 'Cutout',
+    'BBoxJitter', 'Matting', 'AutoAugment'
 ]

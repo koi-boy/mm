@@ -1,5 +1,4 @@
 import cv2
-import PIL
 from PIL import Image, ImageEnhance, ImageFilter
 from skimage.util import random_noise
 
@@ -490,12 +489,13 @@ class RandomColor(object):
             image(ndarray): opencv type(bgr)
         """
         factor = random.uniform(self.color_lower, self.color_upper)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         image = Image.fromarray(img)
         enh_color = ImageEnhance.Color(image)
         image_enhanced = enh_color.enhance(factor)
         image_enhanced = np.asarray(image_enhanced)
-        return image_enhanced
-        
+        return image_enhanced[:,:,[2,1,0]]
+
     def __call__(self, results):
         if 'color' not in results:
             color = True if np.random.rand() < self.color_ratio else False
@@ -535,12 +535,13 @@ class RandomContrast(object):
             image(ndarray): opencv type(bgr)
         """
         factor = random.uniform(self.contrast_lower, self.contrast_upper)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         image = Image.fromarray(img)
         enh_contrast = ImageEnhance.Contrast(image)
         image_enhanced = enh_contrast.enhance(factor)
         image_enhanced = np.asarray(image_enhanced)
-        return image_enhanced
-        
+        return image_enhanced[:,:,[2,1,0]]
+
     def __call__(self, results):
         if 'contrast' not in results:
             contrast = True if np.random.rand() < self.contrast_ratio else False
@@ -585,7 +586,7 @@ class RandomBrightness(object):
         image_enhanced = enh_brightness.enhance(factor)
         image_enhanced = np.asarray(image_enhanced)
         return image_enhanced
-        
+
     def __call__(self, results):
         if 'brightness' not in results:
             brightness = True if np.random.rand() < self.brightness_ratio else False
@@ -627,9 +628,9 @@ class RandomNoise(object):
         Args:
             image(ndarray): opencv type(bgr)
         """
-        noised_image = (random_noise(img, mode=self.noise_type)*255).astype(np.uint8) 
+        noised_image = (random_noise(img, mode=self.noise_type)*255).astype(np.uint8)
         return noised_image
-        
+
     def __call__(self, results):
         if 'noise' not in results:
             noise = True if np.random.rand() < self.noise_ratio else False
