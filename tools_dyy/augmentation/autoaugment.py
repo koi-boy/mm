@@ -89,7 +89,7 @@ def policy_vtest():
     # sub-policy that will be applied sequentially on the image.
     policy = [
         # [('TranslateX_BBox', 1.0, 4), ('Equalize', 1.0, 10)],
-        [('TranslateY_Only_BBoxes', 1.0, 10)]
+        [('ShearY_BBox', 1.0, 2)]
     ]
     return policy
 
@@ -1375,15 +1375,16 @@ def distort_image_with_autoaugment(image, bboxes, augmentation_name):
     return build_and_apply_nas_policy(policy, image, bboxes, augmentation_hparams)
 
 
-# if __name__ == '__main__':
-#     image = cv2.imread('/Users/dyy/Desktop/1.jpg')
-#     h, w = image.shape[:2]
-#     bbox1 = np.array([80 / h, 120 / w, 110 / h, 150 / w])
-#     bbox2 = np.array([70 / h, 110 / w, 120 / h, 160 / w])
-#     bboxes = np.vstack((bbox1, bbox2))
-#     augmented_images, augmented_bboxes = distort_image_with_autoaugment(image, bboxes, 'test')
-#     for bbox in augmented_bboxes:
-#         ymin, xmin, ymax, xmax = int(bbox[0] * h), int(bbox[1] * w), int(bbox[2] * h), int(bbox[3] * w)
-#         cv2.rectangle(augmented_images, (xmin, ymin), (xmax, ymax), (0, 0, 0), 1)
-#     plt.imshow(augmented_images[:,:,[2,1,0]])
-#     plt.show()
+if __name__ == '__main__':
+    image = cv2.imread('/Users/dyy/Desktop/1.jpg')
+    h, w = image.shape[:2]
+    bbox1 = np.array([80 / h, 120 / w, 110 / h, 150 / w])
+    bbox2 = np.array([70 / h, 110 / w, 120 / h, 160 / w])
+    bboxes = np.vstack((bbox1, bbox2))
+    augmented_images, augmented_bboxes = distort_image_with_autoaugment(image, bboxes, 'v1')
+    print(augmented_bboxes)
+    for bbox in augmented_bboxes:
+        ymin, xmin, ymax, xmax = int(bbox[0] * h), int(bbox[1] * w), int(bbox[2] * h), int(bbox[3] * w)
+        cv2.rectangle(augmented_images, (xmin, ymin), (xmax, ymax), (0, 0, 0), 1)
+    plt.imshow(augmented_images[:,:,[2,1,0]])
+    plt.show()

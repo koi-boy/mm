@@ -825,8 +825,8 @@ def _apply_multi_bbox_augmentation(image, bboxes, prob, aug_func,
 
     # Shuffle the bboxes so that the augmentation order is not deterministic if
     # we are not changing the bboxes with aug_func.
-    if not func_changes_bbox:
-        np.random.shuffle(bboxes)
+    # if not func_changes_bbox:
+    #     np.random.shuffle(bboxes)
 
     # Main function of while_loop where we repeatedly apply augmentation on the
     # bboxes in the image.
