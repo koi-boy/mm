@@ -6,13 +6,31 @@ from ..registry import PIPELINES
 class AutoAugment(object):
     """Applies the AutoAugment policy to `image` and `bboxes`.
     Args:
-      augmentation_name: The name of the AutoAugment policy to use. The available
-        options are `v0`, `v1`, `v2`, `v3` and `test`. `v0` is the policy used for
-        all of the results in the paper and was found to achieve the best results
-        on the COCO dataset. `v1`, `v2` and `v3` are additional good policies
-        found on the COCO dataset that have slight variation in what operations
-        were used during the search procedure along with how many operations are
-        applied in parallel to a single image (2 vs 3).
+        augmentation_name: The name of the AutoAugment policy to use. The available
+            options are `v0`, `v1`, `v2`, `v3` and `test`. `v0` is the policy used for
+            all of the results in the paper and was found to achieve the best results
+            on the COCO dataset. `v1`, `v2` and `v3` are additional good policies
+            found on the COCO dataset that have slight variation in what operations
+            were used during the search procedure along with how many operations are
+            applied in parallel to a single image (2 vs 3).
+        cutout_max_pad_fraction: -> 'BBox_Cutout'
+            Applies cutout according to bbox information. The pad fraction is float
+            that specifies how large the cutout area should be in reference to
+            the size of the original bbox.
+            (pad_fraction * bbox height, pad_fraction * bbox width).
+        cutout_bbox_replace_with_mean: -> 'BBox_Cutout'
+            Boolean that specified what value should be filled in cutout area.
+            If True, the mean pixel values across the channel dimension will be filled,
+            otherwise the value will be 128.
+        cutout_const: -> 'Cutout'
+            How big the cutout area will be generated in the image. (2*const x 2*const).
+        translate_const: -> 'TranslateX(Y)_BBox'
+            How many pixels to shift the image and bboxes. If positive, the image will
+            be shift left(X)/upward(Y), otherwise right(X)/downward(Y).
+        cutout_bbox_const: -> 'Cutout_Only_BBoxes'
+            How big the cutout area will be generated inside bboxes.
+        translate_bbox_const: -> 'TranslateX(Y)_Only_BBoxes'
+            How many pixels to shift the bbox.
     """
 
     def __init__(self,
