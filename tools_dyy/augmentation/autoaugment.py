@@ -89,7 +89,7 @@ def policy_vtest():
     # sub-policy that will be applied sequentially on the image.
     policy = [
         # [('TranslateX_BBox', 1.0, 4), ('Equalize', 1.0, 10)],
-        [('ShearY_BBox', 1.0, 2)]
+        [('Rotate_BBox', 0.8, 10)]
     ]
     return policy
 
@@ -825,8 +825,8 @@ def _apply_multi_bbox_augmentation(image, bboxes, prob, aug_func,
 
     # Shuffle the bboxes so that the augmentation order is not deterministic if
     # we are not changing the bboxes with aug_func.
-    if not func_changes_bbox:
-        np.random.shuffle(bboxes)
+    # if not func_changes_bbox:
+    #     np.random.shuffle(bboxes)
 
     # Main function of while_loop where we repeatedly apply augmentation on the
     # bboxes in the image.
@@ -1381,7 +1381,7 @@ if __name__ == '__main__':
     bbox1 = np.array([80 / h, 120 / w, 110 / h, 150 / w])
     bbox2 = np.array([70 / h, 110 / w, 120 / h, 160 / w])
     bboxes = np.vstack((bbox1, bbox2))
-    augmented_images, augmented_bboxes = distort_image_with_autoaugment(image, bboxes, 'v1')
+    augmented_images, augmented_bboxes = distort_image_with_autoaugment(image, bboxes, 'test')
     print(augmented_bboxes)
     for bbox in augmented_bboxes:
         ymin, xmin, ymax, xmax = int(bbox[0] * h), int(bbox[1] * w), int(bbox[2] * h), int(bbox[3] * w)

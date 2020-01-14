@@ -73,16 +73,17 @@ class AutoAugment(object):
                 self.cutout_bbox_const,
                 self.translate_bbox_const
         )
-        augmented_bboxes_ = []
-        for bbox in augmented_bboxes:
-            ymin = bbox[0] * img_h
-            xmin = bbox[1] * img_w
-            ymax = bbox[2] * img_h
-            xmax = bbox[3] * img_w
-            augmented_bboxes_.append([xmin, ymin, xmax, ymax])
-
-        results['img'] = augmented_image
-        results['gt_bboxes'] = np.array(augmented_bboxes_, dtype=np.float32)
+        # assert len(bboxes) == len(augmented_bboxes)
+        if len(bboxes) == len(augmented_bboxes):
+            augmented_bboxes_ = []
+            for bbox in augmented_bboxes:
+                ymin = bbox[0] * img_h
+                xmin = bbox[1] * img_w
+                ymax = bbox[2] * img_h
+                xmax = bbox[3] * img_w
+                augmented_bboxes_.append([xmin, ymin, xmax, ymax])
+            results['img'] = augmented_image
+            results['gt_bboxes'] = np.array(augmented_bboxes_, dtype=np.float32)
         return results
 
     def __repr__(self):
