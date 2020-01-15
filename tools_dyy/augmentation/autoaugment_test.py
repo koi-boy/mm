@@ -38,7 +38,7 @@ if __name__ == '__main__':
         bboxes = np.array(bboxes)
 
         augmented_image, augmented_bboxes = distort_image_with_autoaugment(
-            image, bboxes, 'v0')
+            image, bboxes, 'test')
         for bbox in augmented_bboxes:
             ymin, xmin, ymax, xmax = int(bbox[0] * height), int(bbox[1] * width), int(bbox[2] * height), int(bbox[3] * width)
             cv2.rectangle(augmented_image, (xmin, ymin), (xmax, ymax), (0, 0, 255), 1)

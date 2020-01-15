@@ -37,6 +37,18 @@ _MAX_LEVEL = 10.
 _INVALID_BOX = [[-1.0, -1.0, -1.0, -1.0]]
 
 
+def policy_test():
+    """Autoaugment test policy for debugging."""
+    # Each tuple is an augmentation operation of the form
+    # (operation, probability, magnitude). Each element in policy is a
+    # sub-policy that will be applied sequentially on the image.
+    policy = [
+        # [('TranslateX_BBox', 1.0, 4), ('Equalize', 1.0, 10)],
+        [('ShearY_BBox', 1.0, 2)]
+    ]
+    return policy
+
+
 def policy_v0():
     """Autoaugment policy that was used in AutoAugment Detection Paper."""
     # Each tuple is an augmentation operation of the form
@@ -78,18 +90,6 @@ def policy_v1():
         [('ShearY_BBox', 0.6, 10), ('Equalize_Only_BBoxes', 0.6, 8)],
         [('ShearX_BBox', 0.2, 6), ('TranslateY_Only_BBoxes', 0.2, 10)],
         [('SolarizeAdd', 0.6, 8), ('Brightness', 0.8, 10)],
-    ]
-    return policy
-
-
-def policy_vtest():
-    """Autoaugment test policy for debugging."""
-    # Each tuple is an augmentation operation of the form
-    # (operation, probability, magnitude). Each element in policy is a
-    # sub-policy that will be applied sequentially on the image.
-    policy = [
-        # [('TranslateX_BBox', 1.0, 4), ('Equalize', 1.0, 10)],
-        [('Rotate_BBox', 0.8, 10)]
     ]
     return policy
 
@@ -1358,7 +1358,7 @@ def distort_image_with_autoaugment(image, bboxes, augmentation_name):
       A tuple containing the augmented versions of `image` and `bboxes`.
     """
     available_policies = {'v0': policy_v0, 'v1': policy_v1, 'v2': policy_v2,
-                          'v3': policy_v3, 'test': policy_vtest}
+                          'v3': policy_v3, 'test': policy_test}
     if augmentation_name not in available_policies:
         raise ValueError('Invalid augmentation_name: {}'.format(augmentation_name))
 
@@ -1367,10 +1367,10 @@ def distort_image_with_autoaugment(image, bboxes, augmentation_name):
     augmentation_hparams = {
         "cutout_max_pad_fraction": 0.25,  # 0.75
         "cutout_bbox_replace_with_mean": False,
-        "cutout_const": 20,  # 100
-        "translate_const": 50,  # 250
-        "cutout_bbox_const": 10,  # 50
-        "translate_bbox_const": 10  # 120
+        "cutout_const": 50,  # 100
+        "translate_const": 250,  # 250
+        "cutout_bbox_const": 50,  # 50
+        "translate_bbox_const": 20  # 120
     }
     return build_and_apply_nas_policy(policy, image, bboxes, augmentation_hparams)
 
