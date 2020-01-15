@@ -23,6 +23,10 @@ def parse_args():
         action='store_true',
         help='whether to evaluate the checkpoint during training')
     parser.add_argument(
+        '--validate_cq',
+        action='store_true',
+        help='whether to evaluate CQ index')
+    parser.add_argument(
         '--gpus',
         type=int,
         default=1,
@@ -101,6 +105,7 @@ def main():
         cfg,
         distributed=distributed,
         validate=args.validate,
+        validate_cq=args.validate_cq,
         logger=logger)
 
 

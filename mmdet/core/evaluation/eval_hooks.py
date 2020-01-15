@@ -14,6 +14,8 @@ from mmdet import datasets
 from .coco_utils import fast_eval_recall, results2json
 from .mean_ap import eval_map
 
+from .evaluator import *
+
 
 class DistEvalHook(Hook):
 
@@ -165,6 +167,52 @@ class CocoDistEvalmAPHook(DistEvalHook):
             runner.log_buffer.output['{}_mAP_copypaste'.format(res_type)] = (
                 '{ap[0]:.3f} {ap[1]:.3f} {ap[2]:.3f} {ap[3]:.3f} '
                 '{ap[4]:.3f} {ap[5]:.3f}').format(ap=cocoEval.stats[:6])
+        runner.log_buffer.ready = True
+        for res_type in res_types:
+            os.remove(result_files[res_type])
+
+
+class CocoDistEvalmAPHook_CQ(DistEvalHook):
+
+    def evaluate(self, runner, results):
+        tmp_file = osp.join(runner.work_dir, 'temp_0')
+        result_files = results2json(self.dataset, results, tmp_file)
+
+        res_types = ['bbox', 'segm'
+                     ] if runner.model.module.with_mask else ['bbox']
+        cocoGt = self.dataset.coco
+        imgIds = cocoGt.getImgIds()
+        for res_type in res_types:
+            try:
+                cocoDt = cocoGt.loadRes(result_files[res_type])
+            except IndexError:
+                print('No prediction found.')
+                break
+
+            gt_lst = load_coco_bboxes(cocoGt, is_gt=True)
+            dt_lst = load_coco_bboxes(cocoDt, is_gt=False)
+            evaluator = Evaluator()
+            ret, mAP = evaluator.GetPascalVOCMetrics(
+                gt_lst,
+                dt_lst,
+                method='EveryPointInterpolation'
+            )
+            # Get metric values per each class
+            for metricsPerClass in ret:
+                cl = metricsPerClass['class']
+                ap = metricsPerClass['AP']
+                precision = metricsPerClass['precision']
+                recall = metricsPerClass['recall']
+                totalPositives = metricsPerClass['total positives']
+                total_TP = metricsPerClass['total TP']
+                total_FP = metricsPerClass['total FP']
+
+                ap_str = "{0:.3f}".format(ap)
+                print('AP: %s (%s)' % (ap_str, cl))
+                runner.log_buffer.output['class_{}'.format(cl)] = ap_str
+            mAP_str = "{0:.3f}".format(mAP)
+            print('mAP: %s\n' % mAP_str)
+            runner.log_buffer.output['mAP'] = mAP_str
         runner.log_buffer.ready = True
         for res_type in res_types:
             os.remove(result_files[res_type])

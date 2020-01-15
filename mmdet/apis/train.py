@@ -13,6 +13,8 @@ from mmdet.datasets import DATASETS, build_dataloader
 from mmdet.models import RPN
 from .env import get_root_logger
 
+from mmdet.core import CocoDistEvalmAPHook_CQ
+
 
 def parse_losses(losses):
     log_vars = OrderedDict()
@@ -49,13 +51,14 @@ def train_detector(model,
                    cfg,
                    distributed=False,
                    validate=False,
+                   validate_cq=False,
                    logger=None):
     if logger is None:
         logger = get_root_logger(cfg.log_level)
 
     # start training
     if distributed:
-        _dist_train(model, dataset, cfg, validate=validate)
+        _dist_train(model, dataset, cfg, validate=validate, validate_cq=validate_cq)
     else:
         _non_dist_train(model, dataset, cfg, validate=validate)
 
@@ -134,7 +137,7 @@ def build_optimizer(model, optimizer_cfg):
         return optimizer_cls(params, **optimizer_cfg)
 
 
-def _dist_train(model, dataset, cfg, validate=False):
+def _dist_train(model, dataset, cfg, validate=False, validate_cq=False):
     # prepare data loaders
     dataset = dataset if isinstance(dataset, (list, tuple)) else [dataset]
     data_loaders = [
@@ -175,6 +178,21 @@ def _dist_train(model, dataset, cfg, validate=False):
             if issubclass(dataset_type, datasets.CocoDataset):
                 runner.register_hook(
                     CocoDistEvalmAPHook(val_dataset_cfg, **eval_cfg))
+            else:
+                runner.register_hook(
+                    DistEvalmAPHook(val_dataset_cfg, **eval_cfg))
+    if validate_cq:
+        val_dataset_cfg = cfg.data.val
+        eval_cfg = cfg.get('evaluation', {})
+        if isinstance(model.module, RPN):
+            # TODO: implement recall hooks for other datasets
+            runner.register_hook(
+                CocoDistEvalRecallHook(val_dataset_cfg, **eval_cfg))
+        else:
+            dataset_type = DATASETS.get(val_dataset_cfg.type)
+            if issubclass(dataset_type, datasets.CocoDataset):
+                runner.register_hook(
+                    CocoDistEvalmAPHook_CQ(val_dataset_cfg, **eval_cfg))
             else:
                 runner.register_hook(
                     DistEvalmAPHook(val_dataset_cfg, **eval_cfg))

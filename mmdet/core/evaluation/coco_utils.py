@@ -4,6 +4,7 @@ from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
 from .recall import eval_recalls
+from .evaluator import *
 
 
 def coco_eval(result_files, result_types, coco, max_dets=(100, 300, 1000)):
@@ -37,6 +38,53 @@ def coco_eval(result_files, result_types, coco, max_dets=(100, 300, 1000)):
         cocoEval.evaluate()
         cocoEval.accumulate()
         cocoEval.summarize()
+
+
+def coco_eval_cq(result_files, result_types, coco, max_dets=(100, 300, 1000)):
+    for res_type in result_types:
+        assert res_type in [
+            'proposal', 'proposal_fast', 'bbox', 'segm', 'keypoints'
+        ]
+
+    if mmcv.is_str(coco):
+        coco = COCO(coco)
+    assert isinstance(coco, COCO)
+
+    if result_types == ['proposal_fast']:
+        ar = fast_eval_recall(result_files, coco, np.array(max_dets))
+        for i, num in enumerate(max_dets):
+            print('AR@{}\t= {:.4f}'.format(num, ar[i]))
+        return
+
+    for res_type in result_types:
+        result_file = result_files[res_type]
+        assert result_file.endswith('.json')
+
+        coco_dets = coco.loadRes(result_file)
+        gt_lst = load_coco_bboxes(coco, is_gt=True)
+        dt_lst = load_coco_bboxes(coco_dets, is_gt=False)
+
+        evaluator = Evaluator()
+        ret, mAP = evaluator.GetPascalVOCMetrics(
+            gt_lst,
+            dt_lst,
+            method='EveryPointInterpolation'
+        )
+        # Get metric values per each class
+        for metricsPerClass in ret:
+
+            cl = metricsPerClass['class']
+            ap = metricsPerClass['AP']
+            precision = metricsPerClass['precision']
+            recall = metricsPerClass['recall']
+            totalPositives = metricsPerClass['total positives']
+            total_TP = metricsPerClass['total TP']
+            total_FP = metricsPerClass['total FP']
+
+            ap_str = "{0:.3f}".format(ap)
+            print('AP: %s (%s)' % (ap_str, cl))
+        mAP_str = "{0:.3f}".format(mAP)
+        print('mAP: %s' % mAP_str)
 
 
 def fast_eval_recall(results,

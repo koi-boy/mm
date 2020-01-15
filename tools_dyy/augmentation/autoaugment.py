@@ -44,7 +44,7 @@ def policy_test():
     # sub-policy that will be applied sequentially on the image.
     policy = [
         # [('TranslateX_BBox', 1.0, 4), ('Equalize', 1.0, 10)],
-        [('ShearY_BBox', 1.0, 2)]
+        [('TranslateX_BBox', 0.6, 4)]
     ]
     return policy
 

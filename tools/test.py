@@ -15,6 +15,8 @@ from mmdet.core import coco_eval, results2json, wrap_fp16_model
 from mmdet.datasets import build_dataloader, build_dataset
 from mmdet.models import build_detector
 
+from mmdet.core import coco_eval_cq
+
 
 def single_gpu_test(model, data_loader, show=False):
     model.eval()
@@ -123,6 +125,10 @@ def parse_args():
         default='none',
         help='job launcher')
     parser.add_argument('--local_rank', type=int, default=0)
+    parser.add_argument(
+        '--cq',
+        action='store_true',
+        help='whether to evaluate CQ index')
     args = parser.parse_args()
     if 'LOCAL_RANK' not in os.environ:
         os.environ['LOCAL_RANK'] = str(args.local_rank)
@@ -200,6 +206,8 @@ def main():
                 if not isinstance(outputs[0], dict):
                     result_files = results2json(dataset, outputs, args.out)
                     coco_eval(result_files, eval_types, dataset.coco)
+                    if args.cq:
+                        coco_eval_cq(result_files, eval_types, dataset.coco)
                 else:
                     for name in outputs[0]:
                         print('\nEvaluating {}'.format(name))
@@ -208,6 +216,8 @@ def main():
                         result_files = results2json(dataset, outputs_,
                                                     result_file)
                         coco_eval(result_files, eval_types, dataset.coco)
+                        if args.cq:
+                            coco_eval_cq(result_files, eval_types, dataset.coco)
 
     # Save predictions in the COCO json format
     if args.json_out and rank == 0:

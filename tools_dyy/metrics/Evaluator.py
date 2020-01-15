@@ -1,6 +1,6 @@
 """
 code gently borrowed from: 
-https://github.com/rafaelpadilla/Object-Detection-Metrics/blob/master/lib/Evaluator.py
+https://github.com/rafaelpadilla/Object-Detection-Metrics/blob/master/lib/evaluator.py
 """
 import os, sys
 from collections import Counter
