@@ -107,7 +107,7 @@ class BaseSampler(metaclass=ABCMeta):
         gt_flags_train = bboxes_train.new_zeros((bboxes_train.shape[0], ), dtype=torch.uint8)
         gt_flags_normal = bboxes_normal.new_zeros((bboxes_normal.shape[0], ), dtype=torch.uint8)
 
-        if self.add_gt_as_proposals :
+        if self.add_gt_as_proposals:
             bboxes_train = torch.cat([gt_bboxes, bboxes_train], dim=0)
             assign_result_train.add_gt_(gt_labels)
             gt_ones = bboxes_train.new_ones(gt_bboxes.shape[0], dtype=torch.uint8)
@@ -135,4 +135,3 @@ class BaseSampler(metaclass=ABCMeta):
 
         return SamplingResult(pos_inds, neg_inds_train, bboxes_train, gt_bboxes, assign_result_train, gt_flags_train),\
                SamplingResult(None, neg_inds_normal, bboxes_normal, gt_bboxes, assign_result_normal, gt_flags_normal)
-               
