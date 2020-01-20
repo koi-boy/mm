@@ -39,8 +39,8 @@ class Matting(object):
             matting = True if np.random.rand() < self.matting_ratio else False
             results['matting'] = matting
         if results['matting']:
-            inx = np.random.randint(len(self.normal_imgs))
-            normal_name = self.normal_imgs[inx]
+            ind = np.random.randint(len(self.normal_imgs))
+            normal_name = self.normal_imgs[ind]
             normal_img = mmcv.imread(normal_name)
             normal_img = mmcv.imresize_like(normal_img, results['img'])
             gt_bboxes_ = []
@@ -68,7 +68,7 @@ class Matting(object):
                 else:
                     raise NotImplementedError
             results['img'] = normal_img
-            results['gt_bboxes'] = np.array(gt_bboxes_)
+            results['gt_bboxes'] = np.array(gt_bboxes_, dtype=np.float32)
         return results
 
     def __repr__(self):

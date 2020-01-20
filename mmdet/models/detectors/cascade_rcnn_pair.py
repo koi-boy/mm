@@ -376,12 +376,12 @@ class CascadeRCNN_pair(BaseDetector, RPNTestMixin):
             bbox_roi_extractor = self.bbox_roi_extractor[i]
             bbox_head = self.bbox_head[i]
 
-            rois = bbox2roi([res.bboxes for res in sampling_results])  # [b*512, 5]  5: batch_ind,x1,y1,x2,y2
+            rois = bbox2roi([res.bboxes for res in sampling_results])  # [batch_size*512, 5]  5: batch_ind,x1,y1,x2,y2
             bbox_feats = bbox_roi_extractor(x[:bbox_roi_extractor.num_inputs],
-                                            rois)  # [b*512, 256, 7, 7]
+                                            rois)  # [batch_size*512, 256, 7, 7]
             if self.with_shared_head:
                 bbox_feats = self.shared_head(bbox_feats)
-            cls_score, bbox_pred = bbox_head(bbox_feats)  # [b*512, num_classes(*4)]
+            cls_score, bbox_pred = bbox_head(bbox_feats)  # [batch_size*512, num_classes(*4)]
 
             bbox_targets = bbox_head.get_target(sampling_results,
                                                 gt_bboxes, gt_labels,
