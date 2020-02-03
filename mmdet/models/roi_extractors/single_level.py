@@ -104,8 +104,8 @@ class SingleRoIExtractor(nn.Module):
         for i in range(num_levels):
             inds = target_lvls == i
             if inds.any():
-                rois_ = rois[inds, :]
-                roi_feats_t = self.roi_layers[i](feats[i], rois_)
+                rois_ = rois[inds, :]  # [n, 5], 5: batch_ind,x1,y1,x2,y2
+                roi_feats_t = self.roi_layers[i](feats[i], rois_)  # [n, 256, 7, 7]
                 if self.add_context:
                     for j in range(batch_size):
                         roi_feats_t[rois_[:, 0] == j] += context[i][j]

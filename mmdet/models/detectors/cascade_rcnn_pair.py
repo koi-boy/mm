@@ -3,7 +3,7 @@ from __future__ import division
 import torch
 import torch.nn as nn
 
-#from mmdet.core import (bbox2result, bbox2roi, build_assigner, build_sampler,
+# from mmdet.core import (bbox2result, bbox2roi, build_assigner, build_sampler,
 #                        merge_aug_masks)
 from mmdet.core import (bbox2result, bbox2roi, bbox_mapping, build_assigner,
                         build_sampler, merge_aug_bboxes, merge_aug_masks,
@@ -281,23 +281,23 @@ class CascadeRCNN_pair(BaseDetector, RPNTestMixin):
                            gt_bboxes_ignore=None,
                            gt_masks=None,
                            proposals=None):
-        #img: b, 2*c, h, w
+        # img: [b, 2*c(=6), h, w]
         b, c, h, w = img.shape
-        #img: 2*b, c, h, w
-        img = img.reshape(-1, c//2, h, w)
-        #x: tuple, 5 layer
+        # img: [2*b, c, h, w]
+        img = img.reshape(-1, c // 2, h, w)
+        # x(tuple): 5 feat levels
         x = self.extract_feat(img)
         losses = dict()
 
         # RPN forward and loss
         if self.with_rpn:
-            rpn_outs = self.rpn_head(x)
+            rpn_outs = self.rpn_head(x)  # rpn_outs: (cls_scores, bbox_preds)
             
             rpn_outs_half = []
             for outs_0 in rpn_outs:
                 tmp = []
-                for outs_1 in outs_0:
-                    tmp.append(outs_1[::2, :, :, :])
+                for outs_1 in outs_0:  # loop for feat levels
+                    tmp.append(outs_1[::2, :, :, :])  # get defect imgs' output: [b, num_anchors(*4), h', w']
                 rpn_outs_half.append(tmp)
 
             rpn_loss_inputs = tuple(rpn_outs_half) + (gt_bboxes, img_meta,
@@ -309,23 +309,23 @@ class CascadeRCNN_pair(BaseDetector, RPNTestMixin):
             proposal_cfg = self.train_cfg.get('rpn_proposal',
                                               self.test_cfg.rpn)
 
-            #copy train img_meta to pair. 1,2,3->1,1,2,2,3,3
+            # copy train img_meta to pair. 1,2,3->1,1,2,2,3,3
             img_meta = [img_meta[i//2] for i in range(2*len(img_meta))]
 
             proposal_inputs = rpn_outs + (img_meta, proposal_cfg)
             proposal_list = self.rpn_head.get_bboxes(*proposal_inputs)
         else:
             proposal_list = proposals
-        #proposal_list : batch * [det_bboxes] -> det_bboxes: [n,5] 5: x,y,x,y,score
+        # proposal_list : batch_size * [det_bboxes] -> det_bboxes: [max_num, 5]  5: x1,y1,x2,y2,score
 
-        #generate blank gt for normal img
+        # generate blank gt for normal img
         gt_bboxes_ = []
         gt_labels_ = []
         for i in range(len(gt_bboxes)):
             gt_bboxes_.append(gt_bboxes[i])
             gt_bboxes_.append(torch.Tensor([[1,1,1,1]]).to(gt_bboxes[i].device))
             gt_labels_.append(gt_labels[i])
-            gt_labels_.append(torch.Tensor([[0]]).to(gt_labels[i].device))
+            gt_labels_.append(torch.Tensor([0]).to(gt_labels[i].device))
 
         for i in range(self.num_stages):
             self.current_stage = i
@@ -376,18 +376,18 @@ class CascadeRCNN_pair(BaseDetector, RPNTestMixin):
             bbox_roi_extractor = self.bbox_roi_extractor[i]
             bbox_head = self.bbox_head[i]
 
-            rois = bbox2roi([res.bboxes for res in sampling_results])
+            rois = bbox2roi([res.bboxes for res in sampling_results])  # [batch_size*512, 5]  5: batch_ind,x1,y1,x2,y2
             bbox_feats = bbox_roi_extractor(x[:bbox_roi_extractor.num_inputs],
-                                            rois)
+                                            rois)  # [batch_size*512, 256, 7, 7]
             if self.with_shared_head:
                 bbox_feats = self.shared_head(bbox_feats)
-            cls_score, bbox_pred = bbox_head(bbox_feats)
+            cls_score, bbox_pred = bbox_head(bbox_feats)  # [batch_size*512, num_classes(*4)]
 
             bbox_targets = bbox_head.get_target(sampling_results,
                                                 gt_bboxes, gt_labels,
                                                 rcnn_train_cfg)
             loss_bbox = bbox_head.loss(cls_score, bbox_pred,
-                                            *bbox_targets)
+                                       *bbox_targets)
             for name, value in loss_bbox.items():
                 losses['s{}.{}'.format(i, name)] = (
                     value * lw if 'loss' in name else value)
@@ -418,14 +418,14 @@ class CascadeRCNN_pair(BaseDetector, RPNTestMixin):
                     pos_inds = torch.cat(pos_inds)
                     mask_feats = bbox_feats[pos_inds]
                 mask_head = self.mask_head[i]
-                mask_pred = self.mask_head(mask_feats)
-                mask_targets = self.mask_head.get_target(sampling_results,
-                                                         gt_masks,
-                                                         rcnn_train_cfg)
+                mask_pred = mask_head(mask_feats)
+                mask_targets = mask_head.get_target(sampling_results,
+                                                    gt_masks,
+                                                    rcnn_train_cfg)
                 pos_labels = torch.cat(
                     [res.pos_gt_labels for res in sampling_results])
-                loss_mask = self.mask_head.loss(mask_pred, mask_targets,
-                                                pos_labels)
+                loss_mask = mask_head.loss(mask_pred, mask_targets,
+                                           pos_labels)
                 for name, value in loss_mask.items():
                     losses['s{}.{}'.format(i, name)] = (
                         value * lw if 'loss' in name else value)
@@ -434,8 +434,6 @@ class CascadeRCNN_pair(BaseDetector, RPNTestMixin):
             if i < self.num_stages - 1:
                 pos_is_gts = [res.pos_is_gt for res in sampling_results]
                 roi_labels = bbox_targets[0]  # bbox_targets is a tuple
-                # print('stage:{}'.format(i))
-                # ic(proposal_list[1])
                 with torch.no_grad():
                     proposal_list = bbox_head.refine_bboxes(
                         rois, roi_labels, bbox_pred, pos_is_gts, img_meta)
@@ -598,8 +596,8 @@ class CascadeRCNN_pair(BaseDetector, RPNTestMixin):
 
         return results
 
-#    def aug_test(self, img, img_meta, proposals=None, rescale=False):
-#        raise NotImplementedError
+    # def aug_test(self, img, img_meta, proposals=None, rescale=False):
+    #     raise NotImplementedError
 
     def aug_test(self, imgs, img_metas, proposals=None, rescale=False):
         """Test with augmentations.

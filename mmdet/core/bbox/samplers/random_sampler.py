@@ -39,7 +39,7 @@ class RandomSampler(BaseSampler):
         :param num: sample num
         :return:
         """
-        assert len(gallery_1) + len(gallery_2) > num
+        assert len(gallery_1) + len(gallery_2) >= num
         if isinstance(gallery_1, list):
             gallery_1 = np.array(gallery_1)
         if isinstance(gallery_2, list):
@@ -88,7 +88,6 @@ class RandomSampler(BaseSampler):
                          num_expected,
                          **kwargs):
         pos_inds = torch.nonzero(assign_result.gt_inds > 0)
-
         if pos_inds.numel() != 0:
             pos_inds = pos_inds.squeeze(1)
         if pos_inds.numel() <= num_expected:
@@ -103,13 +102,10 @@ class RandomSampler(BaseSampler):
                          **kwargs):
         neg_inds_train = torch.nonzero(assign_result_train.gt_inds == 0)
         neg_inds_normal = torch.nonzero(assign_result_normal.gt_inds == 0)
-
         if neg_inds_train.numel() != 0:
             neg_inds_train = neg_inds_train.squeeze(1)
-
         if neg_inds_normal.numel() != 0:
             neg_inds_normal = neg_inds_normal.squeeze(1)
-
         if len(neg_inds_train) + len(neg_inds_normal) <= num_expected:
             return neg_inds_train, neg_inds_normal
         else:
