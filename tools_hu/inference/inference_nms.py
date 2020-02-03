@@ -6,9 +6,9 @@ import os, glob
 import json
 import shutil
 import numpy as np
-from utils.Code_dictionary import CodeDictionary
+from tools_hu.utils.Code_dictionary import CodeDictionary
 import pickle
-from utils.utils import nms
+from tools_hu.utils.utils import nms
 
 
 class MyEncoder(json.JSONEncoder):
@@ -70,7 +70,7 @@ def show_and_save_images(img_path, bboxes, code_dict, out_dir=None):
         bbox_int = bbox[:4].astype(np.int32)
         left_top = (bbox_int[0], bbox_int[1])
         right_bottom = (bbox_int[2], bbox_int[3])
-        code = code_dict.id2code(int(bbox[5]))
+        code = str(int(bbox[5])-1)
         label_txt = code + ': ' + str(round(bbox[4], 2))
         cv2.rectangle(img, left_top, right_bottom, (0, 0, 255), 1)
         cv2.putText(img, label_txt, (bbox_int[0], max(bbox_int[1] - 2, 0)),
@@ -81,18 +81,19 @@ def show_and_save_images(img_path, bboxes, code_dict, out_dir=None):
 
 
 if __name__ == '__main__':
-    imgs = glob.glob(r'/data/sdv1/whtm/data/21101_bt/21101bt_part2_2000/*.jpg')
-    pkl_file = r'/data/sdv1/whtm/result/21101/21101_v6_bt2.pkl'
+    imgs = glob.glob(r'/data/sdv1/whtm/data/cq/top/val/*.jpg')
+    pkl_file = r'/data/sdv1/whtm/mmdet_cq/result.pkl'
     output_bboxes, json_dict = model_test(pkl_file,
                                           score_thr=0.05,
                                           NMS=False)
-    with open(r'/data/sdv1/whtm/result/21101/21101_v6_bt2.json', 'w') as f:
+    with open(r'/data/sdv1/whtm/result/cq/result.json', 'w') as f:
         json.dump(json_dict, f, indent=4)
 
-    code_file = r'/data/sdv1/whtm/document/21101.xlsx'
-    code = CodeDictionary(code_file)
+    code_file = r'/data/sdv1/whtm/data/cq/top/classes.txt'
+    id_file = r'/data/sdv1/whtm/data/cq/top/id.txt'
+    code = CodeDictionary(code_file, id_file)
 
-    out_dir = None
+    out_dir = '/data/sdv1/whtm/result/cq'
     if out_dir is not None:
         if os.path.exists(out_dir):
             shutil.rmtree(out_dir)

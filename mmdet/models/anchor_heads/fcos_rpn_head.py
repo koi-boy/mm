@@ -257,7 +257,7 @@ class FCOSRPNHead(nn.Module):
                 scores = scores[topk_inds, :]
                 centerness = centerness[topk_inds]
             scores = scores.squeeze()
-            scores *= centerness
+            # scores *= centerness
             proposals = distance2bbox(points, bbox_pred, max_shape=img_shape)
             proposals = torch.cat([proposals, scores.unsqueeze(-1)], dim=-1)
             proposals, _ = nms(proposals, cfg.nms_thr)

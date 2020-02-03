@@ -33,6 +33,10 @@ class CodeDictionary():
                 code_lst.append(self.code_df.loc[self.code_df['ID'] == id, 'CODE'].values[0])
             return code_lst
 
+    def idx2code(self, idx):
+        if isinstance(idx, int):
+            return self.code_df.loc[idx, 'CODE']
+
     @staticmethod
     def get_dict(code_df):
         d_ = {}
