@@ -42,8 +42,15 @@ def model_test(imgs, pg_cfg, pg_ckpt, ps_cfg, ps_ckpt,
             if len(bboxes) != 0:
                 for bbox in bboxes:  # loop for bbox
                     conf = bbox[4]
+                    ctx = (bbox[0]+bbox[2])/2
+                    cty = (bbox[1]+bbox[3])/2
                     if conf > score_thr:
-                        total_bbox.append(list(bbox) + [category_id])
+                        if w < 1000 and ctx > 80 and ctx < 580 and cty > 0 and cty < 450:
+                            total_bbox.append(list(bbox) + [category_id])
+                        elif w > 1000 and ctx > 1000 and ctx < 4000 and cty > 500 and cty < 2500:
+                            total_bbox.append(list(bbox) + [category_id])
+                        else:
+                            print('outlier | center:{},{} | score:{} | {}'.format(ctx, cty, conf, w))
 
         for bbox in np.array(total_bbox):
             xmin, ymin, xmax, ymax = bbox[:4]
@@ -58,13 +65,13 @@ def model_test(imgs, pg_cfg, pg_ckpt, ps_cfg, ps_ckpt,
 
 
 if __name__ == '__main__':
-    imgs = glob.glob('../a/CQ/val_new/*.jpg')
-    pg_cfg = 'cfg/pg_libra_cascade_r50.py'
-    pg_ckpt = '../a/CQ_work_dirs/pg_libra_cascade_r50/epoch_21.pth'
-    ps_cfg = 'cfg/ps_cascade_se_r50.py'
-    ps_ckpt = '../a/CQ_work_dirs/ps_cascade_se_r50/epoch_22.pth'
+    imgs = glob.glob('/data/sdv1/whtm/data/cq/test/images/*.jpg')
+    pg_cfg = '/data/sdv1/whtm/mmdet_cq/CQ_cfg/HU_cfg/test_cascade_rcnn_x101_32x4d_top.py'
+    pg_ckpt = '/data/sdv1/whtm/a/CQ_work_dirs/cascade_rcnn_x101_32x4d_fpn_2x_top/epoch_24.pth'
+    ps_cfg = '/data/sdv1/whtm/mmdet_cq/CQ_cfg/HU_cfg/test_cascade_rcnn_x101_32x4d_bottom.py'
+    ps_ckpt = '/data/sdv1/whtm/a/CQ_work_dirs/cascade_rcnn_x101_32x4d_fpn_2x_bottom/epoch_24.pth'
 
-    img_dict, anno_dict = model_test(imgs, pg_cfg, pg_ckpt, ps_cfg, ps_ckpt, score_thr=0.01, for_submit=True)
+    img_dict, anno_dict = model_test(imgs, pg_cfg, pg_ckpt, ps_cfg, ps_ckpt, score_thr=0.0, for_submit=True)
     predictions = {"images": img_dict, "annotations": anno_dict}
-    with open('pg_libra_cascade.json', 'w') as f:
+    with open('/data/sdv1/whtm/result/cq/test/concat_0206_01.json', 'w') as f:
         json.dump(predictions, f, indent=4)

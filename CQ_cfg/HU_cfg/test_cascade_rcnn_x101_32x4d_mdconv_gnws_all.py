@@ -1,20 +1,36 @@
 # model settings
+conv_cfg = dict(type='ConvWS')
+norm_cfg = dict(type='GN', num_groups=32, requires_grad=True)
 model = dict(
     type='CascadeRCNN',
     num_stages=3,
     pretrained=None,
     backbone=dict(
-        type='ResNet',
-        depth=50,
+        type='ResNeXt',
+        depth=101,
+        groups=32,
+        base_width=4,
         num_stages=4,
         out_indices=(0, 1, 2, 3),
         frozen_stages=-1,
-        style='pytorch'),
+        style='pytorch',
+        dcn=dict(
+            modulated=True,
+            groups=32,
+            deformable_groups=1,
+            fallback_on_stride=False),
+        stage_with_dcn=(False, True, True, True),
+        conv_cfg=conv_cfg,
+        norm_cfg=norm_cfg
+    ),
     neck=dict(
         type='FPN',
         in_channels=[256, 512, 1024, 2048],
         out_channels=256,
-        num_outs=5),
+        num_outs=5,
+        conv_cfg=conv_cfg,
+        norm_cfg=norm_cfg
+    ),
     rpn_head=dict(
         type='RPNHead',
         in_channels=256,
@@ -34,44 +50,59 @@ model = dict(
         featmap_strides=[4, 8, 16, 32]),
     bbox_head=[
         dict(
-            type='SharedFCBBoxHead',
-            num_fcs=2,
+            type='ConvFCBBoxHead',
+            num_shared_convs=4,
+            num_shared_fcs=1,
             in_channels=256,
+            conv_out_channels=256,
             fc_out_channels=1024,
             roi_feat_size=7,
-            num_classes=8,
+            num_classes=11,
             target_means=[0., 0., 0., 0.],
             target_stds=[0.1, 0.1, 0.2, 0.2],
-            reg_class_agnostic=True,
+            reg_class_agnostic=False,
+            conv_cfg=conv_cfg,
+            norm_cfg=norm_cfg,
             loss_cls=dict(
                 type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
-            loss_bbox=dict(type='SmoothL1Loss', beta=1.0, loss_weight=1.0)),
+            loss_bbox=dict(type='SmoothL1Loss', beta=1.0, loss_weight=1.0)
+        ),
         dict(
-            type='SharedFCBBoxHead',
-            num_fcs=2,
+            type='ConvFCBBoxHead',
+            num_shared_convs=4,
+            num_shared_fcs=1,
             in_channels=256,
+            conv_out_channels=256,
             fc_out_channels=1024,
             roi_feat_size=7,
-            num_classes=8,
+            num_classes=11,
             target_means=[0., 0., 0., 0.],
-            target_stds=[0.05, 0.05, 0.1, 0.1],
-            reg_class_agnostic=True,
+            target_stds=[0.1, 0.1, 0.2, 0.2],
+            reg_class_agnostic=False,
+            conv_cfg=conv_cfg,
+            norm_cfg=norm_cfg,
             loss_cls=dict(
                 type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
-            loss_bbox=dict(type='SmoothL1Loss', beta=1.0, loss_weight=1.0)),
+            loss_bbox=dict(type='SmoothL1Loss', beta=1.0, loss_weight=1.0)
+        ),
         dict(
-            type='SharedFCBBoxHead',
-            num_fcs=2,
+            type='ConvFCBBoxHead',
+            num_shared_convs=4,
+            num_shared_fcs=1,
             in_channels=256,
+            conv_out_channels=256,
             fc_out_channels=1024,
             roi_feat_size=7,
-            num_classes=8,
+            num_classes=11,
             target_means=[0., 0., 0., 0.],
-            target_stds=[0.033, 0.033, 0.067, 0.067],
-            reg_class_agnostic=True,
+            target_stds=[0.1, 0.1, 0.2, 0.2],
+            reg_class_agnostic=False,
+            conv_cfg=conv_cfg,
+            norm_cfg=norm_cfg,
             loss_cls=dict(
                 type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
-            loss_bbox=dict(type='SmoothL1Loss', beta=1.0, loss_weight=1.0))
+            loss_bbox=dict(type='SmoothL1Loss', beta=1.0, loss_weight=1.0)
+        )
     ])
 # model training and testing settings
 train_cfg = dict(
@@ -155,17 +186,17 @@ test_cfg = dict(
         nms_thr=0.7,
         min_bbox_size=0),
     rcnn=dict(
-        score_thr=0.05, nms=dict(type='nms', iou_thr=0.3), max_per_img=100),
+        score_thr=0.01, nms=dict(type='nms', iou_thr=0.3), max_per_img=50),
     keep_all_stages=False)
 # dataset settings
 dataset_type = 'CocoDataset'
-data_root = '/data/sdv1/whtm/data/cq/top/'
+data_root = '/data/sdv1/whtm/data/cq/all/'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', with_bbox=True),
-    dict(type='Resize', img_scale=[(1024, 1024), (1333, 1333)], keep_ratio=True, multiscale_mode='range'),
+    dict(type='Resize', img_scale=[(2000, 800), (2000, 1200)], keep_ratio=True, multiscale_mode='range'),
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='AutoAugment', augmentation_name='v0',
                   cutout_max_pad_fraction=0.25,
@@ -183,7 +214,7 @@ test_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(
         type='MultiScaleFlipAug',
-        img_scale=[(1024, 1024), (1333, 1333)],
+        img_scale=[(2000, 800), (2000, 1200)],
         flip=False,
         transforms=[
             dict(type='Resize', keep_ratio=True),
@@ -199,18 +230,18 @@ data = dict(
     workers_per_gpu=1,
     train=dict(
         type=dataset_type,
-        ann_file=data_root + 'all.json',
-        img_prefix=data_root + 'all/',
+        ann_file=data_root + 'all_annotations.json',
+        img_prefix=data_root + 'images/',
         pipeline=train_pipeline),
     val=dict(
         type=dataset_type,
         ann_file=data_root + 'val.json',
-        img_prefix=data_root + 'val/',
+        img_prefix=data_root + 'images/',
         pipeline=test_pipeline),
     test=dict(
         type=dataset_type,
         ann_file=data_root + 'val.json',
-        img_prefix=data_root + 'val/',
+        img_prefix=data_root + 'images/',
         pipeline=test_pipeline))
 # optimizer
 optimizer = dict(type='SGD', lr=0.005, momentum=0.9, weight_decay=0.0001)
@@ -235,7 +266,7 @@ log_config = dict(
 total_epochs = 20
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-work_dir = '../a/CQ_work_dirs/cascade_rcnn_r50_fpn_1x'
-load_from = '/data/sdv1/whtm/coco_model/cascade_rcnn_r50_fpn_20e_modified.pth'
+work_dir = '../a/CQ_work_dirs/cascade_rcnn_x101_32x4d_mdconv_fpn_gnws_20e_all'
+load_from = '/data/sdv1/whtm/coco_model/cascade_rcnn_x101_32x4d_fpn_2x_modified.pth'
 resume_from = None
 workflow = [('train', 1)]

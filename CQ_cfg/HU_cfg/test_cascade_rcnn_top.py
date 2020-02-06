@@ -9,7 +9,11 @@ model = dict(
         num_stages=4,
         out_indices=(0, 1, 2, 3),
         frozen_stages=-1,
-        style='pytorch'),
+        style='pytorch',
+        dcn=dict(
+            modulated=False, deformable_groups=1, fallback_on_stride=False),
+        stage_with_dcn=(False, True, True, True)
+    ),
     neck=dict(
         type='FPN',
         in_channels=[256, 512, 1024, 2048],
@@ -155,7 +159,7 @@ test_cfg = dict(
         nms_thr=0.7,
         min_bbox_size=0),
     rcnn=dict(
-        score_thr=0.05, nms=dict(type='nms', iou_thr=0.3), max_per_img=100),
+        score_thr=0.0, nms=dict(type='nms', iou_thr=0.3), max_per_img=15),
     keep_all_stages=False)
 # dataset settings
 dataset_type = 'CocoDataset'
@@ -221,7 +225,7 @@ lr_config = dict(
     warmup='linear',
     warmup_iters=1000,
     warmup_ratio=1.0 / 3,
-    step=[16, 19])
+    step=[16, 22])
 checkpoint_config = dict(interval=1)
 # yapf:disable
 log_config = dict(
@@ -232,10 +236,10 @@ log_config = dict(
     ])
 # yapf:enable
 # runtime settings
-total_epochs = 20
+total_epochs = 24
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-work_dir = '../a/CQ_work_dirs/cascade_rcnn_r50_fpn_1x'
-load_from = '/data/sdv1/whtm/coco_model/cascade_rcnn_r50_fpn_20e_modified.pth'
+work_dir = '../a/CQ_work_dirs/cascade_rcnn_r50_dcn_fpn_2x_top'
+load_from = '/data/sdv1/whtm/coco_model/cascade_rcnn_r50_fpn_dconv_modified.pth'
 resume_from = None
 workflow = [('train', 1)]

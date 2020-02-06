@@ -1,7 +1,7 @@
 # model settings
 model = dict(
     type='EfficientDet',
-    pretrained='/data/sdv1/whtm/model/efficientnet/efficientnet_b4_finetuned_0108.pth',
+    pretrained=None,
     backbone=dict(
         type='EfficientNet',
         modelname='efficientnet-b4',
@@ -19,7 +19,7 @@ model = dict(
         activation='relu'),
     bbox_head=dict(
         type='RetinaHead',
-        num_classes=8,
+        num_classes=81,
         in_channels=224,
         stacked_convs=4,
         feat_channels=224,
@@ -60,7 +60,7 @@ test_cfg = dict(
     max_per_img=100)
 # dataset settings
 dataset_type = 'CocoDataset'
-data_root = '/data/sdv1/whtm/data/cq/top/'
+data_root = '/data/sdv1/coco/'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 train_pipeline = [
@@ -68,6 +68,13 @@ train_pipeline = [
     dict(type='LoadAnnotations', with_bbox=True),
     dict(type='Resize', img_scale=(1024, 1024), keep_ratio=True),
     dict(type='RandomFlip', flip_ratio=0.5),
+    dict(type='AutoAugment', augmentation_name='v0',
+                  cutout_max_pad_fraction=0.25,
+                  cutout_bbox_replace_with_mean=False,
+                  cutout_const=20,
+                  translate_const=50,
+                  cutout_bbox_const=10,
+                  translate_bbox_const=10),
     dict(type='Normalize', **img_norm_cfg),
     dict(type='Pad', size_divisor=128),
     dict(type='DefaultFormatBundle'),
@@ -93,29 +100,29 @@ data = dict(
     workers_per_gpu=1,
     train=dict(
         type=dataset_type,
-        ann_file=data_root + 'train.json',
-        img_prefix=data_root + 'train/',
+        ann_file=data_root + 'train2017.json',
+        img_prefix=data_root + 'train2017/',
         pipeline=train_pipeline),
     val=dict(
         type=dataset_type,
-        ann_file=data_root + 'val.json',
-        img_prefix=data_root + 'val/',
+        ann_file=data_root + 'val2017.json',
+        img_prefix=data_root + 'val2017/',
         pipeline=test_pipeline),
     test=dict(
         type=dataset_type,
-        ann_file=data_root + 'train.json',
-        img_prefix=data_root + 'train/',
+        ann_file=data_root + 'val2017.json',
+        img_prefix=data_root + 'val2017/',
         pipeline=test_pipeline))
 # optimizer
-optimizer = dict(type='SGD', lr=0.001, momentum=0.9, weight_decay=0.00004)
+optimizer = dict(type='SGD', lr=0.01, momentum=0.9, weight_decay=0.00004)
 optimizer_config = dict(grad_clip=dict(max_norm=35, norm_type=2))
 # learning policy
 lr_config = dict(
-    policy='cosine',
-    target_lr=0.0,
+    policy='step',
     warmup='linear',
-    warmup_iters=600,
-    warmup_ratio=1.0 / 3)
+    warmup_iters=30000,
+    warmup_ratio=1.0 / 3,
+    step=[8, 11])
 checkpoint_config = dict(interval=3)
 # yapf:disable
 log_config = dict(
@@ -126,11 +133,11 @@ log_config = dict(
     ])
 # yapf:enable
 # runtime settings
-total_epochs = 24
+total_epochs = 12
 device_ids = range(8)
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-work_dir = '../a/CQ_work_dirs/test_efficientdet_0109'
-load_from = '/data/sdv1/whtm/a/CQ_work_dirs/test_efficientdet_0109/epoch_12.pth'
+work_dir = '../a/CQ_work_dirs/test_efficientdet_0204'
+load_from = None
 resume_from = None
 workflow = [('train', 1)]
