@@ -52,11 +52,11 @@ def model_test(imgs, cfg_file, ckpt_file,
 
 
 if __name__ == '__main__':
-    imgs = glob.glob('../a/CQ/testA/*.jpg')
-    cfg_file = 'cfg/1224_baseline.py'
-    ckpt_file = '../a/CQ_work_dirs/baseline_coco/epoch_20.pth'
+    imgs = glob.glob('/data/sdv1/whtm/data/cq/test/images/*.jpg')
+    cfg_file = '/data/sdv1/whtm/mmdet_cq/CQ_cfg/HU_cfg/test_cascade_rcnn_x101_32x4d_mdconv_gnws_all.py'
+    ckpt_file = '/data/sdv1/whtm/a/CQ_work_dirs/cascade_rcnn_x101_32x4d_mdconv_fpn_gnws_20e_all/epoch_20.pth'
 
-    img_dict, anno_dict = model_test(imgs, cfg_file, ckpt_file, score_thr=0.01)
+    img_dict, anno_dict = model_test(imgs, cfg_file, ckpt_file, score_thr=0.0)
     predictions = {"images": img_dict, "annotations": anno_dict}
-    with open('baseline_coco.json', 'w') as f:
+    with open('/data/sdv1/whtm/result/cq/test/GNWS_0206.json', 'w') as f:
         json.dump(predictions, f, indent=4)
