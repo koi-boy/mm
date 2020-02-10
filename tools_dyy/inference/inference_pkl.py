@@ -1,23 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import os
 import cv2
-import time
+import pickle
 import glob
 import json
 import numpy as np
-from mmdet.apis import inference_detector, init_detector
-from progressbar import ProgressBar
 
 
-def model_test(imgs, cfg_file, ckpt_file,
-               score_thr=0.1, device='cuda:0'):
-    model = init_detector(cfg_file, ckpt_file, device=device)
-    pbar = ProgressBar().start()
+def model_test(imgs, pkl_file, score_thr=0.01):
+    with open(pkl_file, 'rb') as f:
+        results = pickle.load(f)
+    assert len(imgs) == len(results)
+
     img_dict, anno_dict = [], []
     for i, img in enumerate(imgs):  # loop for images
-        # st = time.time()
-        pbar.update(int(i / (len(imgs) - 1) * 100))
-
         img_name = img.split('/')[-1]
         img_id = i + 1
         img_dict.append({"file_name": img_name, "id": img_id})
@@ -29,7 +26,7 @@ def model_test(imgs, cfg_file, ckpt_file,
         else:
             class_dict = [6, 7, 8]
 
-        result = inference_detector(model, img_data)
+        result = results[i]
         total_bbox = []
         for idx, bboxes in enumerate(result):  # loop for categories
             category_id = idx + 1
@@ -46,17 +43,24 @@ def model_test(imgs, cfg_file, ckpt_file,
             conf = round(bbox[4], 2)
             category_id = int(bbox[5])
             anno_dict.append({'image_id': img_id, 'bbox': coord, 'category_id': category_id, 'score': conf})
-        # print(i, img_name, time.time() - st)
-    pbar.finish()
+
     return img_dict, anno_dict
 
 
 if __name__ == '__main__':
-    imgs = glob.glob('/data/sdv1/whtm/data/cq/test/images/*.jpg')
-    cfg_file = '/data/sdv1/whtm/mmdet_cq/CQ_cfg/HU_cfg/ga_faster_x101_32x4d_fpn_1x_all.py'
-    ckpt_file = '/data/sdv1/whtm/a/CQ_work_dirs/ga_faster_rcnn_x101_32x4d_mdconv_fpn_all/epoch_6.pth'
+    # imgs = glob.glob('/data/sdv2/a/testA/*.jpg')
+    root = '/data/sdv1/whtm/data/cq/train_test_dataset/'
+    with open(os.path.join(root, 'test.json'), 'r') as f:
+        data = json.load(f)
+    images = data['images']
+    names = []
+    for img in images:
+        img_name = img['file_name']
+        names.append(img_name)
+    imgs = [os.path.join(root, 'images', name) for name in names]
 
-    img_dict, anno_dict = model_test(imgs, cfg_file, ckpt_file, score_thr=0.0)
+    pkl_file = '/data/sdv1/whtm/mmdet_cq/cascade_x101_32x4d_0209.pkl'
+    img_dict, anno_dict = model_test(imgs, pkl_file, score_thr=0.0)
     predictions = {"images": img_dict, "annotations": anno_dict}
-    with open('/data/sdv1/whtm/result/cq/test/GA_FASTER_0209_01.json', 'w') as f:
+    with open('test_0209.json', 'w') as f:
         json.dump(predictions, f, indent=4)

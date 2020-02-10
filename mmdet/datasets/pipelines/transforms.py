@@ -1109,6 +1109,79 @@ class MinIoURandomCrop(object):
 
 
 @PIPELINES.register_module
+class MinIoFRandomCrop(object):
+    """Random crop the image & bboxes, the cropped patches have minimum IoU
+    requirement with original image & bboxes, the IoU threshold is randomly
+    selected from min_ious.
+
+    Args:
+        min_ious (tuple): minimum IoU threshold
+        crop_size (tuple): Expected size after cropping, (h, w).
+    """
+
+    def __init__(self, min_iofs=(0.1, 0.3, 0.5, 0.7, 0.9), min_crop_size=0.3):
+        # 1: return ori img
+        self.sample_mode = (1, *min_iofs, 0)
+        self.min_crop_size = min_crop_size
+
+    def __call__(self, results):
+        img, boxes, labels = [
+            results[k] for k in ('img', 'gt_bboxes', 'gt_labels')
+        ]
+        h, w, c = img.shape
+        while True:
+            mode = random.choice(self.sample_mode)
+            if mode == 1:
+                return results
+
+            min_iou = mode
+            for i in range(50):
+                new_w = random.uniform(self.min_crop_size * w, w)
+                new_h = random.uniform(self.min_crop_size * h, h)
+
+                # h / w in [0.5, 2]
+                if new_h / new_w < 0.5 or new_h / new_w > 2:
+                    continue
+
+                left = random.uniform(w - new_w)
+                top = random.uniform(h - new_h)
+
+                patch = np.array(
+                    (int(left), int(top), int(left + new_w), int(top + new_h)))
+                overlaps = bbox_overlaps(
+                    patch.reshape(-1, 4), boxes.reshape(-1, 4), mode='iof').reshape(-1)
+                if overlaps.min() < min_iou:
+                    continue
+
+                # center of boxes should inside the crop img
+                center = (boxes[:, :2] + boxes[:, 2:]) / 2
+                mask = (center[:, 0] > patch[0]) * (
+                        center[:, 1] > patch[1]) * (center[:, 0] < patch[2]) * (
+                               center[:, 1] < patch[3])
+                if not mask.any():
+                    continue
+                boxes = boxes[mask]
+                labels = labels[mask]
+
+                # adjust boxes
+                img = img[patch[1]:patch[3], patch[0]:patch[2]]
+                boxes[:, 2:] = boxes[:, 2:].clip(max=patch[2:])
+                boxes[:, :2] = boxes[:, :2].clip(min=patch[:2])
+                boxes -= np.tile(patch[:2], 2)
+
+                results['img'] = img
+                results['gt_bboxes'] = boxes
+                results['gt_labels'] = labels
+                return results
+
+    def __repr__(self):
+        repr_str = self.__class__.__name__
+        repr_str += '(min_ious={}, min_crop_size={})'.format(
+            self.min_ious, self.min_crop_size)
+        return repr_str
+
+
+@PIPELINES.register_module
 class Corrupt(object):
 
     def __init__(self, corruption, severity=1):

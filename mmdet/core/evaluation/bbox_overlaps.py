@@ -24,14 +24,17 @@ def bbox_overlaps(bboxes1, bboxes2, mode='iou'):
     if rows * cols == 0:
         return ious
     exchange = False
-    if bboxes1.shape[0] > bboxes2.shape[0]:
+    if bboxes1.shape[0] > bboxes2.shape[0]: #exchange bbox1 with bbox2 if bbox1 is more
         bboxes1, bboxes2 = bboxes2, bboxes1
         ious = np.zeros((cols, rows), dtype=np.float32)
         exchange = True
+    # bbox1 size
     area1 = (bboxes1[:, 2] - bboxes1[:, 0] + 1) * (
         bboxes1[:, 3] - bboxes1[:, 1] + 1)
+    # bbox2 size
     area2 = (bboxes2[:, 2] - bboxes2[:, 0] + 1) * (
         bboxes2[:, 3] - bboxes2[:, 1] + 1)
+    # bbox1 is patch background when mode is iof
     for i in range(bboxes1.shape[0]):
         x_start = np.maximum(bboxes1[i, 0], bboxes2[:, 0])
         y_start = np.maximum(bboxes1[i, 1], bboxes2[:, 1])
@@ -42,7 +45,7 @@ def bbox_overlaps(bboxes1, bboxes2, mode='iou'):
         if mode == 'iou':
             union = area1[i] + area2 - overlap
         else:
-            union = area1[i] if not exchange else area2
+            union = area2 if not exchange else area1[i]
         ious[i, :] = overlap / union
     if exchange:
         ious = ious.T

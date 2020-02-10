@@ -6,9 +6,13 @@ from ..registry import LOSSES
 from .utils import weight_reduce_loss
 
 
-def cross_entropy(pred, label, weight=None, reduction='mean', avg_factor=None):
+def cross_entropy(pred, label, weight=None, class_weights=None, reduction='mean', avg_factor=None):
     # element-wise losses
-    loss = F.cross_entropy(pred, label, reduction='none')
+    if class_weights is None:
+        loss = F.cross_entropy(pred, label, reduction='none')
+    else:
+        class_weights = torch.Tensor(class_weights).cuda()
+        loss = F.cross_entropy(pred, label, class_weights, reduction='none')
 
     # apply weights and do the reduction
     if weight is not None:
@@ -35,6 +39,7 @@ def _expand_binary_labels(labels, label_weights, label_channels):
 def binary_cross_entropy(pred,
                          label,
                          weight=None,
+                         class_weights=None,
                          reduction='mean',
                          avg_factor=None):
     if pred.dim() != label.dim():
@@ -68,6 +73,7 @@ class CrossEntropyLoss(nn.Module):
                  use_sigmoid=False,
                  use_mask=False,
                  reduction='mean',
+                 class_weights=None,
                  loss_weight=1.0):
         super(CrossEntropyLoss, self).__init__()
         assert (use_sigmoid is False) or (use_mask is False)
@@ -75,6 +81,7 @@ class CrossEntropyLoss(nn.Module):
         self.use_mask = use_mask
         self.reduction = reduction
         self.loss_weight = loss_weight
+        self.class_weights = class_weights
 
         if self.use_sigmoid:
             self.cls_criterion = binary_cross_entropy
@@ -97,6 +104,7 @@ class CrossEntropyLoss(nn.Module):
             cls_score,
             label,
             weight,
+            class_weights=self.class_weights,
             reduction=reduction,
             avg_factor=avg_factor,
             **kwargs)
