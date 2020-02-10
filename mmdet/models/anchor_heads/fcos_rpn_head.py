@@ -358,7 +358,7 @@ class FCOSRPNHead(nn.Module):
         num_points = points.size(0)
         num_gts = gt_labels.size(0)
         # change gt labels to 1(foreground)
-        gt_labels = gt_labels.new_ones(num_gts)
+        gt_labels = gt_labels.new_ones(num_gts)  # gt_labels == None
         if num_gts == 0:
             # there is no gts in this image
             return gt_labels.new_zeros(num_points), \

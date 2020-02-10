@@ -7,7 +7,7 @@ from autoaugment import *
 
 if __name__ == '__main__':
 
-    root = '/Users/dyy/Desktop/CQ/'
+    root = '/Users/dyy/Desktop/CQ/pg'
     img_dir = os.path.join(root, 'train')
     json_file = os.path.join(root, 'train.json')
     save_dir = os.path.join(root, 'aug')

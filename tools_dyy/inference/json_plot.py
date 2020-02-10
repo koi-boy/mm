@@ -67,24 +67,23 @@ def results_plot(det_dict, gt_dict, img_dir, save_dir):
 
 
 if __name__ == '__main__':
-    root = r'C:\Users\EDZ\Desktop\chongqing1_round1_train1_20191223'
-    det_json = os.path.join(root, 'model_predict', 'baseline_result.json')
-    gt_json = os.path.join(root, 'train_test', 'test.json')
+    det_json = '/Users/dyy/Desktop/test.json'
+    gt_json = '/Users/dyy/Desktop/CQ/val.json'
 
-    det_dict = get_bboxes(det_json, is_gt=False, score_thr=0.2)
+    det_dict = get_bboxes(det_json, is_gt=False, score_thr=0.01)
     gt_dict = get_bboxes(gt_json, is_gt=True)
 
-    img_dir = os.path.join(root, 'train_test', 'test')
-    save_dir = os.path.join(root, 'model_predict', 'baseline_output')
+    img_dir = '/Users/dyy/Desktop/CQ/val'
+    save_dir = '/Users/dyy/Desktop/output'
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
     results_plot(det_dict, gt_dict, img_dir, save_dir)
 
-    # det_json = r'C:\Users\EDZ\Desktop\baseline_testA.json'
-    # det_dict = get_bboxes(det_json, is_gt=False, score_thr=0.2)
+    # det_json = '/Users/dyy/Desktop/concat_0205.json'
+    # det_dict = get_bboxes(det_json, is_gt=False, score_thr=0.0)
     #
-    # img_dir = r'C:\Users\EDZ\Desktop\chongqing1_round1_testA_20191223\images'
-    # save_dir = r'C:\Users\EDZ\Desktop\baseline_testA'
+    # img_dir = '/Users/dyy/Desktop/CQ/testA'
+    # save_dir = '/Users/dyy/Desktop/testA_output'
     # if not os.path.exists(save_dir):
     #     os.makedirs(save_dir)
     # results_plot(det_dict, None, img_dir, save_dir)
