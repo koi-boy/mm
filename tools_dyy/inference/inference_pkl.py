@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import os
 import cv2
 import pickle
 import glob
@@ -7,7 +8,7 @@ import json
 import numpy as np
 
 
-def model_test(imgs, pkl_file, score_thr=0.1):
+def model_test(imgs, pkl_file, score_thr=0.01):
     with open(pkl_file, 'rb') as f:
         results = pickle.load(f)
     assert len(imgs) == len(results)
@@ -47,10 +48,19 @@ def model_test(imgs, pkl_file, score_thr=0.1):
 
 
 if __name__ == '__main__':
-    imgs = sorted(glob.glob('/data/sdv1/a/testA/*.jpg'))
-    pkl_file = 'result.pkl'
+    # imgs = glob.glob('/data/sdv2/a/testA/*.jpg')
+    root = '/data/sdv1/whtm/data/cq/train_test_dataset/'
+    with open(os.path.join(root, 'test.json'), 'r') as f:
+        data = json.load(f)
+    images = data['images']
+    names = []
+    for img in images:
+        img_name = img['file_name']
+        names.append(img_name)
+    imgs = [os.path.join(root, 'images', name) for name in names]
 
-    img_dict, anno_dict = model_test(imgs, pkl_file, score_thr=0.01)
+    pkl_file = '/data/sdv1/whtm/mmdet_cq/cascade_x101_32x4d_0209.pkl'
+    img_dict, anno_dict = model_test(imgs, pkl_file, score_thr=0.0)
     predictions = {"images": img_dict, "annotations": anno_dict}
-    with open('output.json', 'w') as f:
+    with open('test_0209.json', 'w') as f:
         json.dump(predictions, f, indent=4)

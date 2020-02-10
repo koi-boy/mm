@@ -1,7 +1,6 @@
 # model settings
 model = dict(
-    type='CascadeRCNN',
-    num_stages=3,
+    type='FasterRCNN',
     pretrained=None,
     backbone=dict(
         type='ResNeXt',
@@ -12,12 +11,12 @@ model = dict(
         out_indices=(0, 1, 2, 3),
         frozen_stages=1,
         style='pytorch',
-        dcn=dict(
-            modulated=True,
-            groups=32,
-            deformable_groups=1,
-            fallback_on_stride=False),
-        stage_with_dcn=(False, True, True, True)
+        # dcn=dict(
+        #     modulated=True,
+        #     groups=32,
+        #     deformable_groups=1,
+        #     fallback_on_stride=False),
+        # stage_with_dcn=(False, True, True, True)
     ),
     neck=dict(
         type='FPN',
@@ -53,47 +52,20 @@ model = dict(
         roi_layer=dict(type='RoIAlign', out_size=7, sample_num=2),
         out_channels=256,
         featmap_strides=[4, 8, 16, 32]),
-    bbox_head=[
-        dict(
-            type='SharedFCBBoxHead',
-            num_fcs=2,
-            in_channels=256,
-            fc_out_channels=1024,
-            roi_feat_size=7,
-            num_classes=11,
-            target_means=[0., 0., 0., 0.],
-            target_stds=[0.1, 0.1, 0.2, 0.2],
-            reg_class_agnostic=True,
-            loss_cls=dict(
-                type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
-            loss_bbox=dict(type='SmoothL1Loss', beta=1.0, loss_weight=1.0)),
-        dict(
-            type='SharedFCBBoxHead',
-            num_fcs=2,
-            in_channels=256,
-            fc_out_channels=1024,
-            roi_feat_size=7,
-            num_classes=11,
-            target_means=[0., 0., 0., 0.],
-            target_stds=[0.05, 0.05, 0.1, 0.1],
-            reg_class_agnostic=True,
-            loss_cls=dict(
-                type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
-            loss_bbox=dict(type='SmoothL1Loss', beta=1.0, loss_weight=1.0)),
-        dict(
-            type='SharedFCBBoxHead',
-            num_fcs=2,
-            in_channels=256,
-            fc_out_channels=1024,
-            roi_feat_size=7,
-            num_classes=11,
-            target_means=[0., 0., 0., 0.],
-            target_stds=[0.033, 0.033, 0.067, 0.067],
-            reg_class_agnostic=True,
-            loss_cls=dict(
-                type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
-            loss_bbox=dict(type='SmoothL1Loss', beta=1.0, loss_weight=1.0))
-    ])
+    bbox_head=dict(
+        type='SharedFCBBoxHead',
+        num_fcs=2,
+        in_channels=256,
+        fc_out_channels=1024,
+        roi_feat_size=7,
+        num_classes=11,
+        target_means=[0., 0., 0., 0.],
+        target_stds=[0.05, 0.05, 0.1, 0.1],
+        reg_class_agnostic=False,
+        loss_cls=dict(
+            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0,
+            class_weights=[1, 1.5, 0.9, 0.9, 0.5, 1.3, 0.5, 1.2, 1.3, 0.7, 1.2]),
+        loss_bbox=dict(type='SmoothL1Loss', beta=1.0, loss_weight=1.0)))
 # model training and testing settings
 train_cfg = dict(
     rpn=dict(
@@ -133,54 +105,21 @@ train_cfg = dict(
         max_num=300,
         nms_thr=0.7,
         min_bbox_size=0),
-    rcnn=[
-        dict(
-            assigner=dict(
-                type='MaxIoUAssigner',
-                pos_iou_thr=0.6,
-                neg_iou_thr=0.6,
-                min_pos_iou=0.6,
-                ignore_iof_thr=-1),
-            sampler=dict(
-                type='RandomSampler',
-                num=256,
-                pos_fraction=0.25,
-                neg_pos_ub=-1,
-                add_gt_as_proposals=True),
-            pos_weight=-1,
-            debug=False),
-        dict(
-            assigner=dict(
-                type='MaxIoUAssigner',
-                pos_iou_thr=0.7,
-                neg_iou_thr=0.7,
-                min_pos_iou=0.7,
-                ignore_iof_thr=-1),
-            sampler=dict(
-                type='RandomSampler',
-                num=256,
-                pos_fraction=0.25,
-                neg_pos_ub=-1,
-                add_gt_as_proposals=True),
-            pos_weight=-1,
-            debug=False),
-        dict(
-            assigner=dict(
-                type='MaxIoUAssigner',
-                pos_iou_thr=0.8,
-                neg_iou_thr=0.8,
-                min_pos_iou=0.8,
-                ignore_iof_thr=-1),
-            sampler=dict(
-                type='RandomSampler',
-                num=256,
-                pos_fraction=0.25,
-                neg_pos_ub=-1,
-                add_gt_as_proposals=True),
-            pos_weight=-1,
-            debug=False)
-    ],
-    stage_loss_weights=[1, 0.5, 0.25])
+    rcnn=dict(
+        assigner=dict(
+            type='MaxIoUAssigner',
+            pos_iou_thr=0.6,
+            neg_iou_thr=0.6,
+            min_pos_iou=0.6,
+            ignore_iof_thr=-1),
+        sampler=dict(
+            type='RandomSampler',
+            num=256,
+            pos_fraction=0.25,
+            neg_pos_ub=-1,
+            add_gt_as_proposals=True),
+        pos_weight=-1,
+        debug=False))
 test_cfg = dict(
     rpn=dict(
         nms_across_levels=False,
@@ -190,8 +129,7 @@ test_cfg = dict(
         nms_thr=0.7,
         min_bbox_size=0),
     rcnn=dict(
-        score_thr=1e-3, nms=dict(type='nms', iou_thr=0.5), max_per_img=50),
-    keep_all_stages=False)
+        score_thr=1e-3, nms=dict(type='nms', iou_thr=0.5), max_per_img=50))
 # dataset settings
 dataset_type = 'CocoDataset'
 data_root = '/data/sdv1/whtm/data/cq/train_test_dataset/'
@@ -200,8 +138,11 @@ img_norm_cfg = dict(
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', with_bbox=True),
-    dict(type='Resize', img_scale=[(2000, 800), (2000, 1200)], keep_ratio=True, multiscale_mode='range'),
+    dict(type='Resize', img_scale=(2000, 1200), keep_ratio=True),
+    dict(type='MinIoFRandomCrop', min_crop_size=0.5),
+    dict(type='Resize', img_scale=[(2000, 1000), (2000, 1200)], keep_ratio=True),
     dict(type='RandomFlip', flip_ratio=0.5),
+    dict(type='BBoxJitter', min=0.9, max=1.1),
     dict(type='AutoAugment', augmentation_name='v0',
          cutout_max_pad_fraction=0.25,
          cutout_bbox_replace_with_mean=False,
@@ -245,7 +186,7 @@ data = dict(
     test=dict(
         type=dataset_type,
         ann_file=data_root + 'val.json',
-        img_prefix=data_root + 'val/',
+        img_prefix=data_root + 'val',
         pipeline=test_pipeline))
 # optimizer
 optimizer = dict(type='SGD', lr=0.005, momentum=0.9, weight_decay=0.0001)
@@ -254,7 +195,7 @@ optimizer_config = dict(grad_clip=dict(max_norm=35, norm_type=2))
 lr_config = dict(
     policy='step',
     warmup='linear',
-    warmup_iters=1000,
+    warmup_iters=600,
     warmup_ratio=1.0 / 3,
     step=[10, 14])
 checkpoint_config = dict(interval=1)
@@ -270,7 +211,7 @@ log_config = dict(
 total_epochs = 16
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-work_dir = '../a/CQ_work_dirs/cascade_rcnn_x101_32x4d_mdconv_fpn_garpn_2x_all'
-load_from = '/data/sdv1/whtm/coco_model/cascade_rcnn_x101_32x4d_fpn_2x_modified.pth'
+work_dir = '../a/CQ_work_dirs/ga_faster_rcnn_x101_32x4d_mdconv_fpn_ohem_crop_jitter'
+load_from = '/data/sdv1/whtm/coco_model/ga_faster_x101_32x4d_fpn_1x_modified.pth'
 resume_from = None
 workflow = [('train', 1)]

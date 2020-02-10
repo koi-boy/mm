@@ -115,8 +115,6 @@ def main(config,
         logger=logger)
 
 
-
-
 if __name__ == '__main__':
-    config = r'/data/sdv1/whtm/mmdet_cq/CQ_cfg/test_cascade.py'
+    config = r'/data/sdv1/whtm/mmdet_cq/CQ_cfg/HU_cfg/ga_faster_x101_32x4d_fpn_1x_all.py'
     main(config, validate=True)
