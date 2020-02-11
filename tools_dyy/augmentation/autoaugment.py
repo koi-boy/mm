@@ -44,7 +44,7 @@ def policy_test():
     # sub-policy that will be applied sequentially on the image.
     policy = [
         # [('TranslateX_BBox', 1.0, 4), ('Equalize', 1.0, 10)],
-        [('TranslateX_BBox', 0.6, 4)]
+        [('Cutout', 0.8, 8)]
     ]
     return policy
 
@@ -59,7 +59,7 @@ def policy_v0():
         [('TranslateY_Only_BBoxes', 0.2, 2), ('Cutout', 0.8, 8)],
         [('Sharpness', 0.0, 8), ('ShearX_BBox', 0.4, 0)],
         [('ShearY_BBox', 1.0, 2), ('TranslateY_Only_BBoxes', 0.6, 6)],
-        [('Rotate_BBox', 0.6, 10), ('Color', 1.0, 6)],
+        [('Rotate_BBox', 0.6, 1), ('Color', 1.0, 6)],
     ]
     return policy
 
@@ -1368,9 +1368,9 @@ def distort_image_with_autoaugment(image, bboxes, augmentation_name):
         "cutout_max_pad_fraction": 0.25,  # 0.75
         "cutout_bbox_replace_with_mean": False,
         "cutout_const": 50,  # 100
-        "translate_const": 250,  # 250
-        "cutout_bbox_const": 50,  # 50
-        "translate_bbox_const": 20  # 120
+        "translate_const": 100,  # 250
+        "cutout_bbox_const": 10,  # 50
+        "translate_bbox_const": 10  # 120
     }
     return build_and_apply_nas_policy(policy, image, bboxes, augmentation_hparams)
 
