@@ -43,7 +43,7 @@ def model_test(imgs, cfg_file, ckpt_file,
             xmin, ymin, xmax, ymax = bbox[:4]
             coord = [xmin, ymin, xmax - xmin, ymax - ymin]
             coord = [round(x, 2) for x in coord]
-            conf = round(bbox[4], 2)
+            conf = bbox[4]
             category_id = int(bbox[5])
             anno_dict.append({'image_id': img_id, 'bbox': coord, 'category_id': category_id, 'score': conf})
         # print(i, img_name, time.time() - st)
@@ -52,9 +52,9 @@ def model_test(imgs, cfg_file, ckpt_file,
 
 
 if __name__ == '__main__':
-    imgs = glob.glob('/data/sdv1/whtm/data/cq/test/images/*.jpg')
-    cfg_file = '/data/sdv1/whtm/mmdet_cq/CQ_cfg/HU_cfg/ga_faster_x101_32x4d_fpn_1x_all.py'
-    ckpt_file = '/data/sdv1/whtm/a/CQ_work_dirs/ga_faster_rcnn_x101_32x4d_mdconv_fpn_all/epoch_6.pth'
+    imgs = glob.glob('/data/sdv1/whtm/data/cq/test/testB/*.jpg')
+    cfg_file = '/data/sdv1/whtm/mmdet_cq/CQ_cfg/HU_cfg/cascade_rcnn_x101_32x4d_mdconv_all.py'
+    ckpt_file = '/data/sdv1/whtm/a/CQ_work_dirs//data/sdv1/whtm/a/CQ_work_dirs/cascade_v2_0211/epoch_6.pth'
 
     img_dict, anno_dict = model_test(imgs, cfg_file, ckpt_file, score_thr=0.0)
     predictions = {"images": img_dict, "annotations": anno_dict}

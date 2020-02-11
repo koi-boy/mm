@@ -12,12 +12,12 @@ model = dict(
         out_indices=(0, 1, 2, 3),
         frozen_stages=1,
         style='pytorch',
-        dcn=dict(
-            modulated=True,
-            groups=32,
-            deformable_groups=1,
-            fallback_on_stride=False),
-        stage_with_dcn=(False, True, True, True)
+        # dcn=dict(
+        #     modulated=True,
+        #     groups=32,
+        #     deformable_groups=1,
+        #     fallback_on_stride=False),
+        # stage_with_dcn=(False, True, True, True)
     ),
     neck=dict(
         type='FPN',
@@ -53,7 +53,8 @@ model = dict(
             target_stds=[0.1, 0.1, 0.2, 0.2],
             reg_class_agnostic=True,
             loss_cls=dict(
-                type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
+                type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0,
+                class_weights=[1, 0.74, 0.82, 0.84, 0.77, 0.97, 1.05, 1.11, 1.09, 0.85, 1.38]),
             loss_bbox=dict(type='SmoothL1Loss', beta=1.0, loss_weight=1.0)),
         dict(
             type='SharedFCBBoxHead',
@@ -66,7 +67,8 @@ model = dict(
             target_stds=[0.05, 0.05, 0.1, 0.1],
             reg_class_agnostic=True,
             loss_cls=dict(
-                type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
+                type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0,
+                class_weights=[1, 0.74, 0.82, 0.84, 0.77, 0.97, 1.05, 1.11, 1.09, 0.85, 1.38]),
             loss_bbox=dict(type='SmoothL1Loss', beta=1.0, loss_weight=1.0)),
         dict(
             type='SharedFCBBoxHead',
@@ -79,7 +81,8 @@ model = dict(
             target_stds=[0.033, 0.033, 0.067, 0.067],
             reg_class_agnostic=True,
             loss_cls=dict(
-                type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
+                type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0,
+                class_weights=[1, 0.74, 0.82, 0.84, 0.77, 0.97, 1.05, 1.11, 1.09, 0.85, 1.38]),
             loss_bbox=dict(type='SmoothL1Loss', beta=1.0, loss_weight=1.0))
     ])
 # model training and testing settings
@@ -168,14 +171,15 @@ test_cfg = dict(
     keep_all_stages=False)
 # dataset settings
 dataset_type = 'CocoDataset'
-data_root = '/data/sdv1/whtm/data/cq/train_test_dataset/'
+data_root = '/data/sdv1/whtm/data/cq/test/'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', with_bbox=True),
-    dict(type='Resize', img_scale=[(2000, 800), (2000, 1200)], keep_ratio=True, multiscale_mode='range'),
+    dict(type='Resize', img_scale=[(2000, 1000), (2000, 1200)], keep_ratio=True, multiscale_mode='range'),
     dict(type='RandomFlip', flip_ratio=0.5),
+    dict(type='BBoxJitter', min=0.9, max=1.1),
     dict(type='AutoAugment', augmentation_name='v0',
          cutout_max_pad_fraction=0.25,
          cutout_bbox_replace_with_mean=False,
@@ -208,8 +212,8 @@ data = dict(
     workers_per_gpu=1,
     train=dict(
         type=dataset_type,
-        ann_file=data_root + 'train.json',
-        img_prefix=data_root + 'train/',
+        ann_file=data_root + 'all.json',
+        img_prefix=data_root + 'all/',
         pipeline=train_pipeline),
     val=dict(
         type=dataset_type,
@@ -218,8 +222,8 @@ data = dict(
         pipeline=test_pipeline),
     test=dict(
         type=dataset_type,
-        ann_file=data_root + 'test.json',
-        img_prefix=data_root + 'images/',
+        ann_file=data_root + 'testB.json',
+        img_prefix=data_root + 'testB/',
         pipeline=test_pipeline))
 # optimizer
 optimizer = dict(type='SGD', lr=0.005, momentum=0.9, weight_decay=0.0001)
@@ -228,23 +232,23 @@ optimizer_config = dict(grad_clip=dict(max_norm=35, norm_type=2))
 lr_config = dict(
     policy='step',
     warmup='linear',
-    warmup_iters=1000,
+    warmup_iters=600,
     warmup_ratio=1.0 / 3,
-    step=[10, 14])
+    step=[3, 5])
 checkpoint_config = dict(interval=1)
 # yapf:disable
 log_config = dict(
-    interval=50,
+    interval=20,
     hooks=[
         dict(type='TextLoggerHook'),
         # dict(type='TensorboardLoggerHook')
     ])
 # yapf:enable
 # runtime settings
-total_epochs = 16
+total_epochs = 6
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-work_dir = '../a/CQ_work_dirs/cascade_rcnn_x101_32x4d_mdconv_fpn_16e_all'
-load_from = '/data/sdv1/whtm/coco_model/cascade_rcnn_x101_32x4d_fpn_2x_modified.pth'
+work_dir = '../a/CQ_work_dirs/cascade_v2_0211'
+load_from = '../a/CQ_work_dirs/cascade_v1/epoch_13.pth'
 resume_from = None
 workflow = [('train', 1)]

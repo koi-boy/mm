@@ -208,12 +208,17 @@ class Explorer():
 
     def plot_bbox(self):
         bbox_dict = {}
+        t_xmin, t_ymin, t_xmax, t_ymax = 3000, 3000, 0, 0
         for idx, row in self.ann_df.iterrows():
             category_id = str(row['category_id'])
             xmin = row['xmin']
             ymin = row['ymin']
             xmax = row['xmax']
             ymax = row['ymax']
+            t_xmin = min(t_xmin, xmin)
+            t_ymin = min(t_ymin, ymin)
+            t_xmax = max(t_xmax, xmax)
+            t_ymax = max(t_ymax, ymax)
             w = row['w']
             h = row['h']
             width = row['width']
@@ -223,6 +228,7 @@ class Explorer():
             bbox_dict.setdefault(category_id, []).append({'xmin': xmin, 'ymin': ymin, 'xmax': xmax, 'ymax': ymax,
                                                           'w': w, 'h': h, 'score': score, 'width': width,
                                                           'height': height})
+        print(t_xmin, t_ymin, t_xmax, t_ymax)
         for k, v in bbox_dict.items():
             fig = plt.figure()
             plt.title(k)
@@ -235,12 +241,13 @@ class Explorer():
 
 
 if __name__ == '__main__':
-    img_dir = r'/data/sdv1/whtm/data/cq/test/images'
+    img_dir = r'D:\Project\cq_contest\data\chongqing1_round1_train1_20191223\train_test_dataset\all'
     # ann_dir = r'D:\Project\chongqing_contest\data\chongqing1_round1_train1_20191223\defect_xmls'
-    json_file = r'/data/sdv1/whtm/result/cq/test/concat_0206_01.json'
-    classes_file = r'/data/sdv1/whtm/document/cq/classes.txt'
+    json_file = r'D:\Project\cq_contest\data\chongqing1_round1_train1_20191223\train_test_dataset\all.json'
+    classes_file = r'D:\Project\cq_contest\data\chongqing1_round1_train1_20191223\classes.txt'
     #id_file = r'D:\Project\chongqing_contest\data\chongqing1_round1_train1_20191223\train_test_dataset\bottom\id.txt'
-    id_file = r'/data/sdv1/whtm/document/cq/id.txt'
+    # id_file = r'D:\Project\cq_contest\data\chongqing1_round1_train1_20191223\bottom\id.txt'
+    id_file = None
     explorer = Explorer(json_file, img_dir, classes_file, id_file)
     explorer.plot_center(mode='original', with_size=True, size_meaning='score')
     explorer.plot_category_count_bar()

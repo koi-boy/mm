@@ -40,7 +40,7 @@ def model_test(imgs, pkl_file, score_thr=0.01):
             xmin, ymin, xmax, ymax = bbox[:4]
             coord = [xmin, ymin, xmax - xmin, ymax - ymin]
             coord = [round(x, 2) for x in coord]
-            conf = round(bbox[4], 2)
+            conf = bbox[4]
             category_id = int(bbox[5])
             anno_dict.append({'image_id': img_id, 'bbox': coord, 'category_id': category_id, 'score': conf})
 
@@ -49,18 +49,18 @@ def model_test(imgs, pkl_file, score_thr=0.01):
 
 if __name__ == '__main__':
     # imgs = glob.glob('/data/sdv2/a/testA/*.jpg')
-    root = '/data/sdv1/whtm/data/cq/train_test_dataset/'
-    with open(os.path.join(root, 'test.json'), 'r') as f:
+    root = '/data/sdv1/whtm/data/cq/test/'
+    with open(os.path.join(root, 'testB.json'), 'r') as f:
         data = json.load(f)
     images = data['images']
     names = []
     for img in images:
         img_name = img['file_name']
         names.append(img_name)
-    imgs = [os.path.join(root, 'images', name) for name in names]
+    imgs = [os.path.join(root, 'testB', name) for name in names]
 
-    pkl_file = '/data/sdv1/whtm/mmdet_cq/cascade_x101_32x4d_0209.pkl'
+    pkl_file = '/data/sdv1/whtm/mmdet_cq/cascade_garpn_0211.pkl'
     img_dict, anno_dict = model_test(imgs, pkl_file, score_thr=0.0)
     predictions = {"images": img_dict, "annotations": anno_dict}
-    with open('test_0209.json', 'w') as f:
+    with open('cascade_garpn_0211.json', 'w') as f:
         json.dump(predictions, f, indent=4)
