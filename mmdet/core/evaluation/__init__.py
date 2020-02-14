@@ -7,7 +7,7 @@ from .eval_hooks import (CocoDistEvalmAPHook, CocoDistEvalRecallHook,
 from .mean_ap import average_precision, eval_map, print_map_summary
 from .recall import (eval_recalls, plot_iou_recall, plot_num_recall,
                      print_recall_summary)
-from .eval_hooks import CocoDistEvalmAPHook_CQ
+from .eval_hooks import CocoDistEvalmAPHook_CQ, CocoDistEvalmAPHook_CQ_Jiuye
 from .coco_utils import coco_eval_cq
 
 __all__ = [
@@ -17,5 +17,5 @@ __all__ = [
     'CocoDistEvalRecallHook', 'CocoDistEvalmAPHook', 'average_precision',
     'eval_map', 'print_map_summary', 'eval_recalls', 'print_recall_summary',
     'plot_num_recall', 'plot_iou_recall',
-    'CocoDistEvalmAPHook_CQ', 'coco_eval_cq'
+    'CocoDistEvalmAPHook_CQ', 'CocoDistEvalmAPHook_CQ_Jiuye', 'coco_eval_cq'
 ]

@@ -29,5 +29,5 @@ class Concat(object):
     def __repr__(self):
         repr_str = self.__class__.__name__
         repr_str += '(img_path={})'.format(
-            self.template_path)
+            self.img_path)
         return repr_str

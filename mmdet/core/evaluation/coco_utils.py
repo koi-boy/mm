@@ -40,7 +40,7 @@ def coco_eval(result_files, result_types, coco, max_dets=(100, 300, 1000)):
         cocoEval.summarize()
 
 
-def coco_eval_cq(result_files, result_types, coco, max_dets=(100, 300, 1000)):
+def coco_eval_cq(result_files, result_types, coco, max_dets=(100, 300, 1000), is_jiuye=False):
     for res_type in result_types:
         assert res_type in [
             'proposal', 'proposal_fast', 'bbox', 'segm', 'keypoints'
@@ -68,7 +68,8 @@ def coco_eval_cq(result_files, result_types, coco, max_dets=(100, 300, 1000)):
         ret, mAP = evaluator.GetPascalVOCMetrics(
             gt_lst,
             dt_lst,
-            method='EveryPointInterpolation'
+            method='EveryPointInterpolation',
+            is_jiuye=is_jiuye
         )
         # Get metric values per each class
         for metricsPerClass in ret:

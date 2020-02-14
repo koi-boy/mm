@@ -27,6 +27,10 @@ def parse_args():
         action='store_true',
         help='whether to evaluate CQ index')
     parser.add_argument(
+        '--is_jiuye',
+        action='store_true',
+        help='whether to evaluate CQ jiuye')
+    parser.add_argument(
         '--gpus',
         type=int,
         default=1,
@@ -106,6 +110,7 @@ def main():
         distributed=distributed,
         validate=args.validate,
         validate_cq=args.validate_cq,
+        is_jiuye=args.is_jiuye,
         logger=logger)
 
 

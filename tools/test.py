@@ -129,6 +129,10 @@ def parse_args():
         '--cq',
         action='store_true',
         help='whether to evaluate CQ index')
+    parser.add_argument(
+        '--jiuye',
+        action='store_true',
+        help='whether to calculate CQ jiuye')
     args = parser.parse_args()
     if 'LOCAL_RANK' not in os.environ:
         os.environ['LOCAL_RANK'] = str(args.local_rank)
@@ -207,7 +211,7 @@ def main():
                     result_files = results2json(dataset, outputs, args.out)
                     coco_eval(result_files, eval_types, dataset.coco)
                     if args.cq:
-                        coco_eval_cq(result_files, eval_types, dataset.coco)
+                        coco_eval_cq(result_files, eval_types, dataset.coco, is_jiuye=args.jiuye)
                 else:
                     for name in outputs[0]:
                         print('\nEvaluating {}'.format(name))
@@ -217,7 +221,7 @@ def main():
                                                     result_file)
                         coco_eval(result_files, eval_types, dataset.coco)
                         if args.cq:
-                            coco_eval_cq(result_files, eval_types, dataset.coco)
+                            coco_eval_cq(result_files, eval_types, dataset.coco, is_jiuye=args.jiuye)
 
     # Save predictions in the COCO json format
     if args.json_out and rank == 0:

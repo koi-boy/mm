@@ -1,6 +1,6 @@
 """
 code gently borrowed from:
-https://github.com/rafaelpadilla/Object-Detection-Metrics/blob/master/lib/evaluator.py
+https://github.com/rafaelpadilla/Object-Detection-Metrics/blob/master/lib/Evaluator.py
 """
 import os, sys
 from collections import Counter
@@ -46,7 +46,8 @@ class Evaluator:
     def GetPascalVOCMetrics(self,
                             groundTruths,
                             detections,
-                            method='EveryPointInterpolation'):
+                            method='EveryPointInterpolation',
+                            is_jiuye=False):
         """Get the metrics used by the VOC Pascal 2012 challenge.
         Get
         Args:
@@ -152,7 +153,10 @@ class Evaluator:
                 'total FP': np.sum(FP)
             }
             ret.append(r)
-            mAP += CLASS_WEIGHT[c] * ap
+            if is_jiuye:
+                mAP += 0.3 * ap / 5
+            else:
+                mAP += CLASS_WEIGHT[c] * ap
         return ret, mAP
 
     def PlotPrecisionRecallCurve(self,
