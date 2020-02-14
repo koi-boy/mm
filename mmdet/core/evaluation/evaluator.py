@@ -8,8 +8,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-CLASS_WEIGHT = {1: 0.15, 2: 0.09, 3: 0.09, 4: 0.05, 5: 0.13,
-                6: 0.05, 7: 0.12, 8: 0.13, 9: 0.07, 10: 0.12}
+CLASS_WEIGHT = {1: 0.10, 2: 0.09, 3: 0.07, 4: 0.05, 5: 0.09,
+                9: 0.07, 10: 0.07, 11: 0.30, 12: 0.08, 13: 0.08}
 
 def IOU_THRESHOLD(minSize):
     if minSize < 40:
@@ -17,9 +17,9 @@ def IOU_THRESHOLD(minSize):
     elif 40 <= minSize < 120:
         iou = minSize / 200
     elif 120 <= minSize < 420:
-        iou = minSize / 1500 + 0.52
+        iou = minSize / 3000 + 0.56
     else:
-        iou = 0.8
+        iou = 0.7
     return iou
 
 
