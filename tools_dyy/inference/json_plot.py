@@ -67,23 +67,23 @@ def results_plot(det_dict, gt_dict, img_dir, save_dir):
 
 
 if __name__ == '__main__':
-    det_json = '/Users/dyy/Desktop/test.json'
-    gt_json = '/Users/dyy/Desktop/CQ/val.json'
-
-    det_dict = get_bboxes(det_json, is_gt=False, score_thr=0.01)
-    gt_dict = get_bboxes(gt_json, is_gt=True)
-
-    img_dir = '/Users/dyy/Desktop/CQ/val'
-    save_dir = '/Users/dyy/Desktop/output'
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-    results_plot(det_dict, gt_dict, img_dir, save_dir)
-
-    # det_json = '/Users/dyy/Desktop/concat_0205.json'
-    # det_dict = get_bboxes(det_json, is_gt=False, score_thr=0.0)
+    # det_json = '/Users/dyy/Desktop/test.json'
+    # gt_json = '/Users/dyy/Desktop/CQ/val.json'
     #
-    # img_dir = '/Users/dyy/Desktop/CQ/testA'
-    # save_dir = '/Users/dyy/Desktop/testA_output'
+    # det_dict = get_bboxes(det_json, is_gt=False, score_thr=0.01)
+    # gt_dict = get_bboxes(gt_json, is_gt=True)
+    #
+    # img_dir = '/Users/dyy/Desktop/CQ/val'
+    # save_dir = '/Users/dyy/Desktop/output'
     # if not os.path.exists(save_dir):
     #     os.makedirs(save_dir)
-    # results_plot(det_dict, None, img_dir, save_dir)
+    # results_plot(det_dict, gt_dict, img_dir, save_dir)
+
+    det_json = '/Users/dyy/Desktop/cascade_garpn_0211.json'
+    det_dict = get_bboxes(det_json, is_gt=False, score_thr=0.01)
+
+    img_dir = '/Users/dyy/Desktop/chongqing1_round1_testB_20200210/images'
+    save_dir = '/Users/dyy/Desktop/testB_output2'
+    if not os.path.exists(save_dir):
+         os.makedirs(save_dir)
+    results_plot(det_dict, None, img_dir, save_dir)

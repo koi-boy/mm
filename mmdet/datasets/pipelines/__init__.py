@@ -5,12 +5,13 @@ from .loading import LoadAnnotations, LoadImageFromFile, LoadProposals
 from .test_aug import MultiScaleFlipAug
 from .transforms import (Expand, MinIoURandomCrop, Normalize, Pad,
                          PhotoMetricDistortion, RandomCrop, RandomFlip, Resize,
-                         SegResizeFlipPadRescale, 
+                         SegResizeFlipPadRescale,
                          RandomVerticalFlip, RandomRotate, RandomBrightness,
                          RandomContrast, RandomColor, RandomNoise, RandomFilter,
-                         BBoxJitter, MinIoFRandomCrop)
+                         BBoxJitter, MinIoFRandomCrop, NormalizeGray)
 from .matting import Matting
 from .autoaugment import AutoAugment
+from .concat import Concat
 
 __all__ = [
     'Compose', 'to_tensor', 'ToTensor', 'ImageToTensor', 'ToDataContainer',
@@ -20,5 +21,6 @@ __all__ = [
     'Expand', 'PhotoMetricDistortion',
     'RandomVerticalFlip', 'RandomRotate', 'RandomBrightness',
     'RandomContrast', 'RandomColor', 'RandomNoise', 'RandomFilter',
-    'BBoxJitter', 'Matting', 'AutoAugment', 'MinIoFRandomCrop'
+    'BBoxJitter', 'Matting', 'AutoAugment', 'MinIoFRandomCrop',
+    'Concat', 'NormalizeGray'
 ]

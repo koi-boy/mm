@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 if __name__ == '__main__':
 
-    root = r'C:\Users\EDZ\Desktop\chongqing1_round1_train1_20191223'
+    root = '/Users/dyy/Desktop/chongqing/round2'
     img_dir = os.path.join(root, 'images')
     json_file = os.path.join(root, 'annotations.json')
 
@@ -58,7 +58,7 @@ if __name__ == '__main__':
             c3 += 1
     x = list(range(4))
     y = [c0, c1, c2, c3]
-    plt.pie(y, labels=['m<40', '40<=m<120', '120<=m<420', 'm>420'])
+    plt.pie(y, labels=['m<40', '40<=m<120', '120<=m<420', 'm>=420'])
     plt.title('short edge of bbox')
     plt.show()
 
