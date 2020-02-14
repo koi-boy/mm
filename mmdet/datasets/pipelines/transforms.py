@@ -1149,8 +1149,8 @@ class MinIoFRandomCrop(object):
                 patch = np.array(
                     (int(left), int(top), int(left + new_w), int(top + new_h)))
                 overlaps = bbox_overlaps(
-                    patch.reshape(-1, 4), boxes.reshape(-1, 4), mode='iof').reshape(-1)
-                if overlaps.min() < min_iou:
+                    patch.reshape(-1, 4), boxes.reshape(-1, 4), mode='iof_crop').reshape(-1)
+                if overlaps.max() > min_iou:
                     continue
 
                 # center of boxes should inside the crop img

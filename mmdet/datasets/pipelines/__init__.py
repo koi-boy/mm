@@ -8,7 +8,7 @@ from .transforms import (Expand, MinIoURandomCrop, Normalize, Pad,
                          SegResizeFlipPadRescale, 
                          RandomVerticalFlip, RandomRotate, RandomBrightness,
                          RandomContrast, RandomColor, RandomNoise, RandomFilter,
-                         BBoxJitter)
+                         BBoxJitter, MinIoFRandomCrop)
 from .matting import Matting
 from .autoaugment import AutoAugment
 
@@ -20,5 +20,5 @@ __all__ = [
     'Expand', 'PhotoMetricDistortion',
     'RandomVerticalFlip', 'RandomRotate', 'RandomBrightness',
     'RandomContrast', 'RandomColor', 'RandomNoise', 'RandomFilter',
-    'BBoxJitter', 'Matting', 'AutoAugment'
+    'BBoxJitter', 'Matting', 'AutoAugment', 'MinIoFRandomCrop'
 ]
